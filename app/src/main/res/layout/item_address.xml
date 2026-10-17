@@ -68,22 +68,12 @@
             android:textSize="15sp" />
 
         <ImageButton
-            android:id="@+id/a_change"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginStart="8dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Змінити адресу"
-            android:src="@drawable/ic_place"
-            android:tint="?attr/colorOnSurfaceVariant" />
-
-        <ImageButton
             android:id="@+id/a_edit"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginStart="8dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Змінити назву"
+            android:contentDescription="Редагувати назву й адресу"
             android:src="@drawable/ic_edit"
             android:tint="?attr/colorOnSurfaceVariant" />
 

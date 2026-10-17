@@ -198,8 +198,8 @@ public class SettingsActivity extends AppCompatActivity {
                 runTick();
             });
 
-            row.findViewById(R.id.a_edit).setOnClickListener(v -> rename(this, a.domId, this::renderAddresses));
-            row.findViewById(R.id.a_change).setOnClickListener(v -> startActivity(
+            // One button edits both the name and the address (fields come pre-filled)
+            row.findViewById(R.id.a_edit).setOnClickListener(v -> startActivity(
                     new Intent(this, AddAddressActivity.class).putExtra(AddAddressActivity.EXTRA_REPLACE, a.domId)));
 
             ImageButton del = row.findViewById(R.id.a_delete);

@@ -20,6 +20,9 @@ final class Address {
      *  when the website has no queues for this exact house. */
     long qDomId;
     String qDomName = "";
+    /** The four choices it was made from, so editing can start from them (0/"" = unknown). */
+    long filId, nsId, stId;
+    String nsName = "", stName = "", domName = "";
 
     long queueSource() {
         return qDomId > 0 ? qDomId : domId;
@@ -45,6 +48,12 @@ final class Address {
             o.put("qAt", queuesCheckedAt);
             o.put("qDom", qDomId);
             o.put("qDomN", qDomName);
+            o.put("fil", filId);
+            o.put("ns", nsId);
+            o.put("st", stId);
+            o.put("nsN", nsName);
+            o.put("stN", stName);
+            o.put("domN", domName);
         } catch (JSONException ignored) {
         }
         return o;
@@ -65,6 +74,23 @@ final class Address {
         a.queuesCheckedAt = o.optLong("qAt");
         a.qDomId = o.optLong("qDom");
         a.qDomName = o.optString("qDomN");
+        a.filId = o.optLong("fil");
+        a.nsId = o.optLong("ns");
+        a.stId = o.optLong("st");
+        a.nsName = o.optString("nsN");
+        a.stName = o.optString("stN");
+        a.domName = o.optString("domN");
+        // Older saves only have "Населений пункт, вулиця, будинок" as one text
+        if (a.nsName.isEmpty() && !a.full.isEmpty()) {
+            String[] p = a.full.split(", ");
+            if (p.length >= 3) {
+                a.nsName = p[0];
+                a.domName = p[p.length - 1];
+                StringBuilder st = new StringBuilder(p[1]);
+                for (int i = 2; i < p.length - 1; i++) st.append(", ").append(p[i]);
+                a.stName = st.toString();
+            }
+        }
         return a;
     }
 

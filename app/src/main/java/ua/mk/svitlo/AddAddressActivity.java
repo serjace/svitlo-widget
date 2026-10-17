@@ -62,6 +62,10 @@ public class AddAddressActivity extends AppCompatActivity {
     private List<Item> houses = new ArrayList<>();
     /** When editing: the address being replaced (0 = adding a new one). */
     private long replaceDom;
+    /** When editing: what to pre-select in each field once its list has loaded (by id or by name). */
+    private final long[] pendingId = new long[4];
+    private final String[] pendingName = new String[4];
+    private final List<List<Item>> loaded = new ArrayList<>(java.util.Collections.nCopies(4, (List<Item>) null));
 
     static final String EXTRA_REPLACE = "replace_dom";
 
@@ -117,16 +121,26 @@ public class AddAddressActivity extends AppCompatActivity {
                 }
             });
         }
+        Address old = replaceDom > 0 ? new Store(this).find(replaceDom) : null;
         if (replaceDom > 0) {
-            Address old = new Store(this).find(replaceDom);
-            toolbar.setTitle("Змінити адресу");
-            if (old != null) {
-                etName.setText(old.name);
-                tvStatus.setText("Зараз: " + old.full + "\nОберіть нову адресу. Назва і сповіщення збережуться.");
-            }
+            toolbar.setTitle("Редагувати адресу");
+            btnSave.setText("Зберегти зміни");
+        }
+        if (old != null) {
+            // Start from the current address: every field is filled in, change only what you need
+            etName.setText(old.name);
+            pendingId[0] = old.filId;
+            pendingId[1] = old.nsId;
+            pendingId[2] = old.stId;
+            pendingId[3] = old.domId;
+            pendingName[1] = old.nsName.isEmpty() ? null : old.nsName;
+            pendingName[2] = old.stName.isEmpty() ? null : old.stName;
+            pendingName[3] = old.domName.isEmpty() ? null : old.domName;
+            tvStatus.setText("Змініть те, що потрібно, і натисніть «Зберегти зміни».");
         }
         resetBelow(0);
         load(0, "/api/addr/filii");
+        if (old != null && old.filId == 0 && !old.nsName.isEmpty()) findDistrict(old.nsName);
         btnSave.setOnClickListener(v -> save());
     }
 
@@ -181,9 +195,11 @@ public class AddAddressActivity extends AppCompatActivity {
                 ui.post(() -> {
                     if (generation[lvl] != gen || isFinishing()) return;
                     if (lvl == 3) houses = items;
+                    loaded.set(lvl, items);
                     fields[lvl].setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, items));
                     boxes[lvl].setEnabled(!items.isEmpty());
                     boxes[lvl].setHelperText(items.isEmpty() ? "Нічого не знайдено" : null);
+                    if (applyPending(lvl)) return;
                     if (items.size() == 1) {
                         settingText = true;
                         fields[lvl].setText(items.get(0).name, false);
@@ -196,6 +212,61 @@ public class AddAddressActivity extends AppCompatActivity {
                     if (generation[lvl] != gen || isFinishing()) return;
                     boxes[lvl].setHelperText("Не вдалося завантажити. Перевірте інтернет і відкрийте екран знову.");
                 });
+            }
+        });
+    }
+
+    /** Editing: pick the remembered choice in this field (which then loads the next field). */
+    private boolean applyPending(int lvl) {
+        List<Item> items = loaded.get(lvl);
+        if (items == null || (pendingId[lvl] == 0 && pendingName[lvl] == null)) return false;
+        Item match = null;
+        for (Item it : items) {
+            if ((pendingId[lvl] > 0 && it.id == pendingId[lvl])
+                    || (pendingName[lvl] != null && it.name.equals(pendingName[lvl]))) {
+                match = it;
+                break;
+            }
+        }
+        pendingId[lvl] = 0;
+        pendingName[lvl] = null;
+        if (match == null) {
+            for (int i = lvl + 1; i < 4; i++) {
+                pendingId[i] = 0;
+                pendingName[i] = null;
+            }
+            return false;
+        }
+        settingText = true;
+        fields[lvl].setText(match.name, false);
+        settingText = false;
+        select(lvl, match);
+        return true;
+    }
+
+    /** Older saved addresses don't remember their дільниця: find it by the settlement name. */
+    private void findDistrict(String nsName) {
+        bg.execute(() -> {
+            try {
+                JSONArray fil = Api.getArray("/api/addr/filii");
+                for (int i = 0; i < fil.length(); i++) {
+                    long filId = fil.getJSONObject(i).getLong("idfilial");
+                    JSONArray ns = Api.getArray("/api/addr/filii/" + filId + "/ns");
+                    for (int j = 0; j < ns.length(); j++) {
+                        JSONObject o = ns.getJSONObject(j);
+                        if (nsName.equals(o.optString("naznaspunkt").trim())) {
+                            long nsId = o.getLong("idnaspunkt");
+                            ui.post(() -> {
+                                if (sel[0] != null || isFinishing()) return;
+                                pendingId[0] = filId;
+                                pendingId[1] = nsId;
+                                applyPending(0);
+                            });
+                            return;
+                        }
+                    }
+                }
+            } catch (Exception ignored) {
             }
         });
     }
@@ -320,6 +391,12 @@ public class AddAddressActivity extends AppCompatActivity {
         a.name = custom.isEmpty() ? st.name + ", " + dom.name : custom;
         a.applyQueues(oq);
         a.queuesCheckedAt = System.currentTimeMillis();
+        a.filId = sel[0] != null ? sel[0].id : 0;
+        a.nsId = ns.id;
+        a.stId = st.id;
+        a.nsName = ns.name;
+        a.stName = st.name;
+        a.domName = dom.name;
         if (from != null) {
             a.qDomId = from.id;
             a.qDomName = from.name;

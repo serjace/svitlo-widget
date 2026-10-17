@@ -6,14 +6,14 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/wbg_on"
-    android:gravity="center_vertical"
+    android:gravity="top"
     android:orientation="vertical"
     android:paddingStart="16dp"
     android:paddingTop="10dp"
     android:paddingEnd="12dp"
     android:paddingBottom="10dp">
 
-    <!-- Place name + ⇄. The whole row is the switch button. -->
+    <!-- Place name + ⇄ (the ⇄ icon switches the address) -->
     <LinearLayout
         android:id="@+id/w_header"
         android:layout_width="match_parent"

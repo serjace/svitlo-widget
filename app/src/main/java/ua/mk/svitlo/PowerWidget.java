@@ -24,7 +24,7 @@ public class PowerWidget extends AppWidgetProvider {
     static final String ACTION_SWITCH = "ua.mk.svitlo.SWITCH";
     private static final int[] ROWS = {R.id.w_row1, R.id.w_row2, R.id.w_row3, R.id.w_row4};
 
-    /** Tap on the place name / ⇄: show the next saved address on this widget. */
+    /** Tap on ⇄: show the next saved address on this widget. */
     @Override
     public void onReceive(Context ctx, Intent intent) {
         super.onReceive(ctx, intent);
@@ -121,7 +121,7 @@ public class PowerWidget extends AppWidgetProvider {
         v.setTextViewText(R.id.w_address, place);
         v.setTextViewText(R.id.w_status, s.title);
 
-        // ⇄ switch: the whole place-name row is the button (big target, no extra space)
+        // ⇄ switch: only the ⇄ icon switches the address
         boolean several = st.addresses().size() > 1;
         v.setViewVisibility(R.id.w_switch, several ? View.VISIBLE : View.GONE);
         if (several) {
@@ -133,7 +133,6 @@ public class PowerWidget extends AppWidgetProvider {
                     .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id);
             PendingIntent swPi = PendingIntent.getBroadcast(ctx, 2000 + id, sw,
                     PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-            v.setOnClickPendingIntent(R.id.w_header, swPi);
             v.setOnClickPendingIntent(R.id.w_switch, swPi);
         }
 

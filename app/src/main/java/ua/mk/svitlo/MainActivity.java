@@ -27,6 +27,9 @@ import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.snackbar.Snackbar;
+
+import java.time.Instant;
 
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
@@ -87,6 +90,10 @@ public class MainActivity extends AppCompatActivity {
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == R.id.action_refresh) {
+                refresh(true);
+                return true;
+            }
             if (item.getItemId() == R.id.action_share) {
                 SettingsActivity.share(this);
                 return true;
@@ -169,6 +176,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void refresh() {
+        refresh(false);
+    }
+
+    /** @param byUser show a small "Оновлено о …" pop-up when done (⟳ was tapped) */
+    void refresh(boolean byUser) {
         if (refreshing) return;
         refreshing = true;
         adapter.notifyDataSetChanged();
@@ -177,6 +189,14 @@ public class MainActivity extends AppCompatActivity {
             runOnUiThread(() -> {
                 refreshing = false;
                 render();
+                if (byUser && !isFinishing()) {
+                    Store st = new Store(this);
+                    String msg = st.lastError() > st.fetchedAt()
+                            ? "Не вдалося оновити — немає звʼязку"
+                            : "Оновлено о " + Instant.ofEpochMilli(st.fetchedAt()).atZone(Schedule.ZONE)
+                                    .format(DateTimeFormatter.ofPattern("HH:mm"));
+                    Snackbar.make(pager, msg, Snackbar.LENGTH_SHORT).show();
+                }
             });
         }).start();
     }
@@ -225,7 +245,8 @@ public class MainActivity extends AppCompatActivity {
                 else group.check(v.getId());
             });
             chip.setOnLongClickListener(v -> {
-                SettingsActivity.rename(this, x.domId, this::render);
+                startActivity(new Intent(this, AddAddressActivity.class)
+                        .putExtra(AddAddressActivity.EXTRA_REPLACE, x.domId));
                 return true;
             });
         }
@@ -292,7 +313,6 @@ public class MainActivity extends AppCompatActivity {
         final ImageView hIcon;
         final LinearLayout mNext;
         final HourGridView mTodayGrid, mTomorrowGrid;
-        final MaterialButton btnRefresh;
         final ChipGroup chips;
         final View content;
 
@@ -320,9 +340,7 @@ public class MainActivity extends AppCompatActivity {
             mTomorrowGrid = v.findViewById(R.id.m_tomorrow_grid);
             mTomorrowMore = v.findViewById(R.id.m_tomorrow_more);
             mUpdated = v.findViewById(R.id.m_updated);
-            btnRefresh = v.findViewById(R.id.btn_refresh);
             ((TextView) v.findViewById(R.id.m_legend)).setText(legend());
-            btnRefresh.setOnClickListener(x -> refresh());
         }
 
         void bind(Address a, int pos) {
@@ -361,7 +379,7 @@ public class MainActivity extends AppCompatActivity {
                         startActivity(new Intent(MainActivity.this, AddAddressActivity.class)));
                 btnAddFirst.setVisibility(View.VISIBLE);
             } else if (!a.hasQueues()) {
-                btnAddFirst.setText("Змінити адресу");
+                btnAddFirst.setText("Редагувати адресу");
                 btnAddFirst.setOnClickListener(x -> startActivity(new Intent(MainActivity.this, AddAddressActivity.class)
                         .putExtra(AddAddressActivity.EXTRA_REPLACE, a.domId)));
                 btnAddFirst.setVisibility(View.VISIBLE);
@@ -415,8 +433,7 @@ public class MainActivity extends AppCompatActivity {
                 cardTomorrow.setClickable(m != null);
             }
             mUpdated.setText(refreshing ? "Оновлення…" : updated);
-            btnRefresh.setEnabled(!refreshing);
-            btnRefresh.setVisibility(a == null ? View.GONE : View.VISIBLE);
+            mUpdated.setVisibility(a == null ? View.GONE : View.VISIBLE);
         }
     }
 }
