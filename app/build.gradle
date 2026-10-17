@@ -1,0 +1,47 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Build number comes from GitHub (each online build gets the next number),
+// so every new APK installs over the previous one as an update.
+def buildNumber = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
+
+android {
+    namespace 'ua.mk.svitlo'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'ua.mk.svitlo'
+        minSdk 26
+        targetSdk 34
+        versionCode buildNumber
+        versionName "1.0.${buildNumber}"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file('../keystore/release.p12')
+            storeType 'pkcs12'
+            storePassword 'svitlo-widget'
+            keyAlias(System.getenv("KEY_ALIAS") ?: 'svitlo')
+            keyPassword 'svitlo-widget'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
