@@ -11,4 +11,6 @@
     android:targetCellHeight="2"
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="1800000"
+    android:configure="ua.mk.svitlo.WidgetConfigActivity"
+    android:widgetFeatures="reconfigurable"
     android:widgetCategory="home_screen" />

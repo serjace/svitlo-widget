@@ -41,9 +41,12 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
     private static final int MAX_ROWS = 4;
 
-    private View switcher, cardUpdate;
-    private ChipGroup cgAddresses;
+    /** Opens the app on this address (used by widgets). */
+    static final String EXTRA_DOM = "open_dom";
+
+    private View cardUpdate;
     private ViewPager2 pager;
+    private int navInset;   // space to keep free at the bottom for the (transparent) gesture bar
     private final PagesAdapter adapter = new PagesAdapter();
     private boolean refreshing;
     private boolean ignorePageEvents;
@@ -59,8 +62,11 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        switcher = findViewById(R.id.switcher);
-        cgAddresses = findViewById(R.id.cg_addresses);
+        Bars.apply(this, findViewById(R.id.main_root), bottom -> {
+            navInset = bottom;
+            adapter.notifyDataSetChanged();
+        });
+        openFromIntent(getIntent());
         cardUpdate = findViewById(R.id.card_update);
         pager = findViewById(R.id.pager);
         pager.setAdapter(adapter);
@@ -73,7 +79,6 @@ public class MainActivity extends AppCompatActivity {
                 Address cur = st.active();
                 if (cur == null || cur.domId != x.domId) {
                     st.setActiveDom(x.domId);
-                    checkChip(position);
                     runTick();
                 }
             }
@@ -120,6 +125,22 @@ public class MainActivity extends AppCompatActivity {
                 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
         }
+    }
+
+    /** A widget was tapped: show that widget's address. */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        openFromIntent(intent);
+    }
+
+    private void openFromIntent(Intent intent) {
+        long dom = intent == null ? 0 : intent.getLongExtra(EXTRA_DOM, 0);
+        if (dom <= 0) return;
+        intent.removeExtra(EXTRA_DOM);
+        Store st = new Store(this);
+        if (st.find(dom) != null) st.setActiveDom(dom);
     }
 
     @Override
@@ -178,28 +199,30 @@ public class MainActivity extends AppCompatActivity {
         if (pager.getCurrentItem() != idx) pager.setCurrentItem(idx, false);
         pager.post(() -> ignorePageEvents = false);
 
-        renderSwitcher(idx);
         renderUpdate();
     }
 
-    /** Big "Дім / Робота" buttons on top when there are several addresses. Long press = rename. */
-    private void renderSwitcher(int activeIdx) {
-        cgAddresses.removeAllViews();
+    /** Big centred "Дім / Робота" buttons at the top of each page. Long press = rename. */
+    private void fillChips(ChipGroup group, int pagePos) {
+        group.removeAllViews();
         if (list.size() < 2) {
-            switcher.setVisibility(View.GONE);
+            group.setVisibility(View.GONE);
             return;
         }
-        switcher.setVisibility(View.VISIBLE);
+        group.setVisibility(View.VISIBLE);
         LayoutInflater inf = getLayoutInflater();
         for (int i = 0; i < list.size(); i++) {
             final int pos = i;
             Address x = list.get(i);
-            Chip chip = (Chip) inf.inflate(R.layout.chip_address, cgAddresses, false);
+            Chip chip = (Chip) inf.inflate(R.layout.chip_address, group, false);
             chip.setId(View.generateViewId());
             chip.setText(x.name);
-            cgAddresses.addView(chip);
-            if (i == activeIdx) cgAddresses.check(chip.getId());
-            chip.setOnClickListener(v -> pager.setCurrentItem(pos, true));
+            group.addView(chip);
+            if (i == pagePos) group.check(chip.getId());
+            chip.setOnClickListener(v -> {
+                if (pos != pagePos) pager.setCurrentItem(pos, true);
+                else group.check(v.getId());
+            });
             chip.setOnLongClickListener(v -> {
                 SettingsActivity.rename(this, x.domId, this::render);
                 return true;
@@ -211,12 +234,6 @@ public class MainActivity extends AppCompatActivity {
         startActivity(new Intent(this, DayActivity.class)
                 .putExtra(DayActivity.EXTRA_DOM, a.domId)
                 .putExtra(DayActivity.EXTRA_DAY, day));
-    }
-
-    private void checkChip(int position) {
-        if (position < cgAddresses.getChildCount()) {
-            cgAddresses.check(cgAddresses.getChildAt(position).getId());
-        }
     }
 
     private void renderUpdate() {
@@ -256,7 +273,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onBindViewHolder(@NonNull Page holder, int position) {
-            holder.bind(position < list.size() ? list.get(position) : null);
+            holder.bind(position < list.size() ? list.get(position) : null, position);
         }
 
         @Override
@@ -275,9 +292,13 @@ public class MainActivity extends AppCompatActivity {
         final LinearLayout mNext;
         final HourGridView mTodayGrid, mTomorrowGrid;
         final MaterialButton btnRefresh;
+        final ChipGroup chips;
+        final View content;
 
         Page(View v) {
             super(v);
+            chips = v.findViewById(R.id.page_chips);
+            content = v.findViewById(R.id.page_content);
             addrBox = v.findViewById(R.id.p_addr_box);
             addrName = v.findViewById(R.id.p_addr_name);
             addrFull = v.findViewById(R.id.p_addr_full);
@@ -303,8 +324,10 @@ public class MainActivity extends AppCompatActivity {
             btnRefresh.setOnClickListener(x -> refresh());
         }
 
-        void bind(Address a) {
+        void bind(Address a, int pos) {
+            Bars.padBottom(content, navInset);
             if (sch == null) return;
+            fillChips(chips, pos);
             Status s = Status.compute(sch, a, now);
 
             // Which address

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/add_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
     android:orientation="vertical">
 
     <com.google.android.material.appbar.MaterialToolbar
@@ -12,6 +12,7 @@
         android:layout_height="?attr/actionBarSize"
         app:navigationContentDescription="Назад"
         app:navigationIcon="@drawable/ic_arrow_back"
+        app:titleCentered="true"
         app:title="Додати адресу" />
 
     <androidx.core.widget.NestedScrollView
@@ -20,6 +21,7 @@
         android:layout_weight="1">
 
         <LinearLayout
+            android:id="@+id/add_content"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"

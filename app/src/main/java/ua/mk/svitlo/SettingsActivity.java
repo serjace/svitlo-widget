@@ -61,6 +61,8 @@ public class SettingsActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
+        View content = findViewById(R.id.settings_content);
+        Bars.apply(this, findViewById(R.id.settings_root), bottom -> Bars.padBottom(content, bottom));
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setNavigationOnClickListener(v -> finish());
 

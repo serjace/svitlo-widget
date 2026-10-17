@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/settings_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
     android:orientation="vertical">
 
     <com.google.android.material.appbar.MaterialToolbar
@@ -12,6 +12,7 @@
         android:layout_height="?attr/actionBarSize"
         app:navigationContentDescription="Назад"
         app:navigationIcon="@drawable/ic_arrow_back"
+        app:titleCentered="true"
         app:title="Налаштування" />
 
     <androidx.core.widget.NestedScrollView
@@ -20,6 +21,7 @@
         android:layout_weight="1">
 
         <LinearLayout
+            android:id="@+id/settings_content"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -246,7 +248,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:padding="16dp"
-                    android:text="Утримуйте палець на порожньому місці головного екрана → «Віджети» → «Світло». Є два розміри: великий (4×2) і квадратний (2×2).\n\nКолір віджета показує статус: зелений — світло є, жовтий — можливе відключення, червоний — світла немає.\n\nНа великому віджеті: ⇄ — інша адреса, ⟳ — оновити."
+                    android:text="Утримуйте палець на порожньому місці головного екрана → «Віджети» → «Світло». Є два розміри: великий (4×2) і квадратний (2×2). Під час додавання оберіть адресу і розмір тексту.\n\nКолір віджета показує статус: зелений — світло є, жовтий — можливе відключення, червоний — світла немає.\n\nРозтягніть віджет — текст стане більшим. Щоб бачити кілька адрес, додайте кілька віджетів. Змінити адресу віджета: на Android 12 і новіших утримайте віджет → «Налаштувати»; на старіших — видаліть віджет і додайте знову.\n\nДані на віджеті оновлюються самі приблизно кожні 10 хвилин."
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="16sp" />
             </com.google.android.material.card.MaterialCardView>

@@ -39,6 +39,14 @@
             android:exported="false" />
 
         <activity
+            android:name=".WidgetConfigActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name=".AddAddressActivity"
             android:exported="false"
             android:label="@string/add_address" />

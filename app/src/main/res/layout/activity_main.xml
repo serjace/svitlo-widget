@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/main_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
     android:orientation="vertical">
 
     <com.google.android.material.appbar.MaterialToolbar
@@ -51,30 +51,7 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Address switcher (only when there are 2+ addresses) -->
-    <LinearLayout
-        android:id="@+id/switcher"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
-
-        <HorizontalScrollView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:scrollbars="none">
-
-            <com.google.android.material.chip.ChipGroup
-                android:id="@+id/cg_addresses"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                app:selectionRequired="true"
-                app:singleLine="true"
-                app:singleSelection="true" />
-        </HorizontalScrollView>
-    </LinearLayout>
-
+    <!-- One page per address; swipe left/right -->
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/pager"
         android:layout_width="match_parent"

@@ -115,7 +115,20 @@ final class Store {
     }
 
     void removeWidget(int widgetId) {
-        p.edit().remove("w_" + widgetId).apply();
+        p.edit().remove("w_" + widgetId).remove("wl_" + widgetId).apply();
+    }
+
+    void setWidgetAddress(int widgetId, long domId) {
+        p.edit().putLong("w_" + widgetId, domId).apply();
+    }
+
+    /** Widget shows only the main things, in the biggest letters. */
+    boolean widgetLarge(int widgetId) {
+        return p.getBoolean("wl_" + widgetId, false);
+    }
+
+    void setWidgetLarge(int widgetId, boolean large) {
+        p.edit().putBoolean("wl_" + widgetId, large).apply();
     }
 
     // ---- settings ----

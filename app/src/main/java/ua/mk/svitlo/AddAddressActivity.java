@@ -73,6 +73,8 @@ public class AddAddressActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add);
+        android.view.View content = findViewById(R.id.add_content);
+        Bars.apply(this, findViewById(R.id.add_root), bottom -> Bars.padBottom(content, bottom));
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setNavigationOnClickListener(v -> finish());
         replaceDom = getIntent().getLongExtra(EXTRA_REPLACE, 0);

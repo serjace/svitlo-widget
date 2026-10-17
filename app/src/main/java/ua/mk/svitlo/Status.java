@@ -170,7 +170,7 @@ final class Status {
         List<int[]> maybe = runs(slots, Schedule.PROBABLY, Schedule.PROBABLY);
         StringBuilder b = new StringBuilder();
         if (off.isEmpty()) b.append("Відключень не заплановано");
-        else b.append("Світла не буде:\n").append(joinRanges(off));
+        else b.append("Світло відсутнє:\n").append(joinRanges(off));
         if (!maybe.isEmpty()) b.append("\nМожливі відключення:\n").append(joinRanges(maybe));
         return b.toString();
     }
