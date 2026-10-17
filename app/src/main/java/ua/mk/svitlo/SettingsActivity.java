@@ -9,10 +9,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.PowerManager;
 import android.provider.Settings;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.ImageButton;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -20,12 +17,24 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.button.MaterialButtonToggleGroup;
-import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.android.material.divider.MaterialDivider;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.textfield.TextInputEditText;
 
+import android.annotation.SuppressLint;
+import android.view.MotionEvent;
+import android.view.ViewGroup;
+
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.ItemTouchHelper;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.divider.MaterialDividerItemDecoration;
+import com.google.android.material.textfield.MaterialAutoCompleteTextView;
+
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /** Everything that isn't needed every day: addresses, notifications, sharing, widget help. */
@@ -33,9 +42,13 @@ public class SettingsActivity extends AppCompatActivity {
     private static final int[] LEADS = {10, 15, 30};
     private static final int[] CHIPS = {R.id.chip_10, R.id.chip_15, R.id.chip_30};
     private static final float[] SCALES = {0.85f, 1f, 1.15f, 1.3f};
-    private static final int[] SCALE_CHIPS = {R.id.chip_ws_s, R.id.chip_ws_m, R.id.chip_ws_l, R.id.chip_ws_xl};
+    private static final String[] SCALE_NAMES = {"Менший", "Звичайний", "Більший", "Найбільший"};
 
-    private LinearLayout addrList;
+    private RecyclerView addrList;
+    private TextView addrEmpty;
+    private final AddrAdapter addrAdapter = new AddrAdapter();
+    private ItemTouchHelper dragger;
+    private boolean moved;
     private TextView mBatteryHint;
     private MaterialButton btnBattery;
 
@@ -69,6 +82,46 @@ public class SettingsActivity extends AppCompatActivity {
         toolbar.setNavigationOnClickListener(v -> finish());
 
         addrList = findViewById(R.id.addr_list);
+        addrEmpty = findViewById(R.id.addr_empty);
+        addrList.setLayoutManager(new LinearLayoutManager(this));
+        addrList.setAdapter(addrAdapter);
+        MaterialDividerItemDecoration div = new MaterialDividerItemDecoration(this, LinearLayoutManager.VERTICAL);
+        div.setLastItemDecorated(false);
+        addrList.addItemDecoration(div);
+        // Hold ≡ (or the whole row) and drag to change the order
+        dragger = new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
+            @Override
+            public boolean onMove(@NonNull RecyclerView rv, @NonNull RecyclerView.ViewHolder from,
+                                  @NonNull RecyclerView.ViewHolder to) {
+                int a = from.getAdapterPosition(), b = to.getAdapterPosition();
+                if (a < 0 || b < 0) return false;
+                Collections.swap(addrAdapter.items, a, b);
+                addrAdapter.notifyItemMoved(a, b);
+                moved = true;
+                return true;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder h, int direction) {
+            }
+
+            @Override
+            public void onSelectedChanged(RecyclerView.ViewHolder h, int state) {
+                super.onSelectedChanged(h, state);
+                if (h != null && state == ItemTouchHelper.ACTION_STATE_DRAG) h.itemView.setAlpha(0.85f);
+            }
+
+            @Override
+            public void clearView(@NonNull RecyclerView rv, @NonNull RecyclerView.ViewHolder h) {
+                super.clearView(rv, h);
+                h.itemView.setAlpha(1f);
+                if (moved) {
+                    moved = false;
+                    saveOrder();
+                }
+            }
+        });
+        dragger.attachToRecyclerView(addrList);
         mBatteryHint = findViewById(R.id.m_battery_hint);
         btnBattery = findViewById(R.id.btn_battery);
 
@@ -101,20 +154,18 @@ public class SettingsActivity extends AppCompatActivity {
         bindSwitch(R.id.sw_emergency, Store.F_EMERGENCY, st);
         bindSwitch(R.id.sw_schedule, Store.F_SCHEDULE, st);
 
-        // Widget text size
-        MaterialButtonToggleGroup ws = findViewById(R.id.tg_wscale);
-        int wsChecked = R.id.chip_ws_m;
-        for (int i = 0; i < SCALES.length; i++) if (Math.abs(SCALES[i] - st.widgetScale()) < 0.01f) wsChecked = SCALE_CHIPS[i];
-        ws.check(wsChecked);
-        showScaleName(wsChecked);
-        ws.addOnButtonCheckedListener((group, id, isChecked) -> {
-            if (!isChecked) return;
-            showScaleName(id);
-            for (int i = 0; i < SCALE_CHIPS.length; i++) {
-                if (SCALE_CHIPS[i] == id && Math.abs(new Store(this).widgetScale() - SCALES[i]) > 0.01f) {
-                    new Store(this).setWidgetScale(SCALES[i]);
-                    runTick();
-                }
+        // Widget text size: drop-down list
+        MaterialAutoCompleteTextView ws = findViewById(R.id.ac_wscale);
+        ws.setSimpleItems(SCALE_NAMES);
+        int wsIdx = 1;
+        for (int i = 0; i < SCALES.length; i++) if (Math.abs(SCALES[i] - st.widgetScale()) < 0.01f) wsIdx = i;
+        ws.setText(SCALE_NAMES[wsIdx], false);
+        ws.setOnItemClickListener((parent, view, position, id) -> {
+            if (position < 0 || position >= SCALES.length) return;
+            Store s = new Store(this);
+            if (Math.abs(s.widgetScale() - SCALES[position]) > 0.01f) {
+                s.setWidgetScale(SCALES[position]);
+                runTick();
             }
         });
 
@@ -196,90 +247,83 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void renderAddresses() {
-        Store st = new Store(this);
-        Address active = st.active();
-        addrList.removeAllViews();
-        List<Address> list = st.addresses();
-        if (list.isEmpty()) {
-            TextView empty = new TextView(this);
-            empty.setText("Додайте свою адресу, щоб бачити графік і отримувати сповіщення.");
-            empty.setTextSize(16);
-            empty.setTextColor(MaterialColors.getColor(addrList, com.google.android.material.R.attr.colorOnSurfaceVariant));
-            int p = dp(16);
-            empty.setPadding(p, p, p, p);
-            addrList.addView(empty);
-            return;
+        List<Address> list = new Store(this).addresses();
+        addrAdapter.items.clear();
+        addrAdapter.items.addAll(list);
+        addrAdapter.notifyDataSetChanged();
+        addrEmpty.setVisibility(list.isEmpty() ? View.VISIBLE : View.GONE);
+        addrList.setVisibility(list.isEmpty() ? View.GONE : View.VISIBLE);
+    }
+
+    /** Compact rows: ≡ · name and address (tap = edit or delete) · 🔔 switch. */
+    private class AddrAdapter extends RecyclerView.Adapter<AddrAdapter.Row> {
+        final List<Address> items = new ArrayList<>();
+
+        class Row extends RecyclerView.ViewHolder {
+            final TextView title, sub;
+            final MaterialSwitch bell;
+
+            @SuppressLint("ClickableViewAccessibility")
+            Row(View v) {
+                super(v);
+                title = v.findViewById(R.id.a_title);
+                sub = v.findViewById(R.id.a_sub);
+                bell = v.findViewById(R.id.a_notify);
+                // touching ≡ starts dragging right away; a long press on the row works too
+                v.findViewById(R.id.a_handle).setOnTouchListener((h, e) -> {
+                    if (e.getActionMasked() == MotionEvent.ACTION_DOWN && items.size() > 1) dragger.startDrag(this);
+                    return false;
+                });
+            }
         }
-        LayoutInflater inf = getLayoutInflater();
-        for (int i = 0; i < list.size(); i++) {
-            Address a = list.get(i);
-            boolean isActive = active != null && active.domId == a.domId;
-            if (i > 0) addrList.addView(new MaterialDivider(this));
 
-            View row = inf.inflate(R.layout.item_address, addrList, false);
-            row.findViewById(R.id.a_check).setVisibility(isActive ? View.VISIBLE : View.INVISIBLE);
-            ((TextView) row.findViewById(R.id.a_title)).setText(a.name);
-            ((TextView) row.findViewById(R.id.a_sub)).setText(a.full + "\n" + a.queuesText());
+        @NonNull
+        @Override
+        public Row onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            return new Row(getLayoutInflater().inflate(R.layout.item_address, parent, false));
+        }
 
-            MaterialSwitch bell = row.findViewById(R.id.a_notify);
-            bell.setChecked(a.notify);
-            bell.setOnCheckedChangeListener((b, isChecked) -> {
-                Store s = new Store(this);
+        @Override
+        public void onBindViewHolder(@NonNull Row h, int position) {
+            Address a = items.get(position);
+            h.title.setText(a.name);
+            h.sub.setText(a.full + "\n" + a.queuesText());
+            h.itemView.findViewById(R.id.a_handle).setVisibility(items.size() > 1 ? View.VISIBLE : View.INVISIBLE);
+            h.bell.setOnCheckedChangeListener(null);
+            h.bell.setChecked(a.notify);
+            h.bell.setOnCheckedChangeListener((b, isChecked) -> {
+                a.notify = isChecked;
+                Store s = new Store(SettingsActivity.this);
                 List<Address> all = s.addresses();
                 for (Address x : all) if (x.domId == a.domId) x.notify = isChecked;
                 s.saveAddresses(all);
                 runTick();
             });
-
-            // ↑ ↓ change the order (main-screen buttons and the widget ⇄ follow it)
-            final int pos = i;
-            View up = row.findViewById(R.id.a_up);
-            View down = row.findViewById(R.id.a_down);
-            row.findViewById(R.id.a_order).setVisibility(list.size() > 1 ? View.VISIBLE : View.GONE);
-            up.setVisibility(i > 0 ? View.VISIBLE : View.GONE);
-            down.setVisibility(i < list.size() - 1 ? View.VISIBLE : View.GONE);
-            up.setOnClickListener(v -> move(pos, pos - 1));
-            down.setOnClickListener(v -> move(pos, pos + 1));
-
-            // One button edits both the name and the address (fields come pre-filled)
-            row.findViewById(R.id.a_edit).setOnClickListener(v -> startActivity(
-                    new Intent(this, AddAddressActivity.class).putExtra(AddAddressActivity.EXTRA_REPLACE, a.domId)));
-
-            ImageButton del = row.findViewById(R.id.a_delete);
-            del.setOnClickListener(v -> new MaterialAlertDialogBuilder(this)
-                    .setTitle("Видалити адресу?")
-                    .setMessage(a.name + "\n" + a.full)
-                    .setPositiveButton("Видалити", (d, w) -> {
-                        new Store(this).removeAddress(a.domId);
-                        renderAddresses();
-                        runTick();
-                    })
-                    .setNegativeButton("Скасувати", null)
-                    .show());
-
-            row.setOnClickListener(v -> {
-                new Store(this).setActiveDom(a.domId);
-                renderAddresses();
-                runTick();
+            // Tap = edit name and address (delete is there too)
+            h.itemView.setOnClickListener(v -> startActivity(new Intent(SettingsActivity.this, AddAddressActivity.class)
+                    .putExtra(AddAddressActivity.EXTRA_REPLACE, a.domId)));
+            h.itemView.setOnLongClickListener(v -> {
+                if (items.size() > 1) dragger.startDrag(h);
+                return true;
             });
-            addrList.addView(row);
+        }
+
+        @Override
+        public int getItemCount() {
+            return items.size();
         }
     }
 
-    private void showScaleName(int id) {
-        String[] names = {"Менший", "Звичайний", "Більший", "Найбільший"};
-        for (int i = 0; i < SCALE_CHIPS.length; i++) {
-            if (SCALE_CHIPS[i] == id) ((TextView) findViewById(R.id.m_wscale)).setText(names[i]);
-        }
-    }
-
-    private void move(int from, int to) {
+    /** Saves the order after a drag (main-screen buttons and the widget ⇄ follow it). */
+    private void saveOrder() {
         Store s = new Store(this);
         List<Address> all = s.addresses();
-        if (from < 0 || to < 0 || from >= all.size() || to >= all.size()) return;
-        all.add(to, all.remove(from));
-        s.saveAddresses(all);
-        renderAddresses();
+        List<Address> ordered = new ArrayList<>();
+        for (Address x : addrAdapter.items) {
+            for (Address y : all) if (y.domId == x.domId) ordered.add(y);
+        }
+        if (ordered.size() != all.size()) return;
+        s.saveAddresses(ordered);
         runTick();
     }
 

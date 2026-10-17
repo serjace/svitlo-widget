@@ -123,6 +123,20 @@
                 android:enabled="false"
                 android:text="Зберегти" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_delete"
+                style="@style/Widget.Material3.Button.TextButton.Icon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="8dp"
+                android:text="Видалити цю адресу"
+                android:textColor="?attr/colorError"
+                android:textSize="16sp"
+                android:visibility="gone"
+                app:icon="@drawable/ic_delete"
+                app:iconTint="?attr/colorError" />
+
             <TextView
                 android:id="@+id/tv_status"
                 android:layout_width="match_parent"

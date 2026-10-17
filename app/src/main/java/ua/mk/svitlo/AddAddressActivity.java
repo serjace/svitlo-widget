@@ -2,6 +2,7 @@ package ua.mk.svitlo;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.view.View;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
@@ -142,6 +143,23 @@ public class AddAddressActivity extends AppCompatActivity {
         load(0, "/api/addr/filii");
         if (old != null && old.filId == 0 && !old.nsName.isEmpty()) findDistrict(old.nsName);
         btnSave.setOnClickListener(v -> save());
+
+        // Editing: the address can also be deleted here
+        View del = findViewById(R.id.btn_delete);
+        if (old != null) {
+            del.setVisibility(View.VISIBLE);
+            del.setOnClickListener(v -> new MaterialAlertDialogBuilder(this)
+                    .setTitle("Видалити адресу?")
+                    .setMessage(old.name + "\n" + old.full)
+                    .setPositiveButton("Видалити", (d, w) -> {
+                        new Store(this).removeAddress(old.domId);
+                        Context app = getApplicationContext();
+                        new Thread(() -> Updater.tick(app, false)).start();
+                        finish();
+                    })
+                    .setNegativeButton("Скасувати", null)
+                    .show());
+        }
     }
 
     @Override
