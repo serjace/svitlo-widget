@@ -175,6 +175,35 @@ final class Status {
         return b.toString();
     }
 
+    /**
+     * Short summary of today from the current half-hour to midnight (for the "schedule changed"
+     * notification): "Світла не буде: зараз–16:00, 20:00–22:00\nМожливі відключення: 18:00–20:00".
+     */
+    static String restOfDay(int[] slots, int from) {
+        int[] rest = slots.clone();
+        for (int i = 0; i < from && i < rest.length; i++) rest[i] = Schedule.ENABLE;
+        List<int[]> off = runs(rest, Schedule.OFF, Schedule.SURE_OFF);
+        List<int[]> maybe = runs(rest, Schedule.PROBABLY, Schedule.PROBABLY);
+        if (off.isEmpty() && maybe.isEmpty()) return "До кінця дня відключень немає";
+        StringBuilder b = new StringBuilder();
+        if (!off.isEmpty()) b.append("Світла не буде: ").append(restRanges(off, from));
+        if (!maybe.isEmpty()) {
+            if (b.length() > 0) b.append("\n");
+            b.append("Можливі відключення: ").append(restRanges(maybe, from));
+        }
+        return b.toString();
+    }
+
+    private static String restRanges(List<int[]> r, int from) {
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < r.size(); i++) {
+            if (i > 0) b.append(", ");
+            int[] p = r.get(i);
+            b.append(p[0] <= from ? "зараз" : hm(p[0])).append("–").append(hm(p[1]));
+        }
+        return b.toString();
+    }
+
     private void set(String line1, String line2, String detail, String shortDetail) {
         this.line1 = line1;
         this.line2 = line2;

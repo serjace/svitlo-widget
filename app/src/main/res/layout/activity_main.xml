@@ -51,6 +51,19 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
+    <!-- "Дім / Робота" buttons: stay in place, only the selection moves when swiping -->
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/main_chips"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="4dp"
+        android:visibility="gone"
+        app:selectionRequired="true"
+        app:singleSelection="true" />
+
     <!-- One page per address; swipe left/right -->
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/pager"

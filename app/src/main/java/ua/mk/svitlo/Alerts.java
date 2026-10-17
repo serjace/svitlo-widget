@@ -60,11 +60,11 @@ final class Alerts {
                 if (t == null) t = new int[48];
                 String kt = today.toString();
                 String ht = Arrays.toString(t);
-                if (tell && old.has(kt) && !ht.equals(old.optString(kt))) {
+                // Only changes from now until midnight matter; the past part is ignored
+                if (tell && old.has(kt) && changedFrom(old.optString(kt), t, ni)) {
                     Notifier.show(ctx, Notifier.CH_SCHEDULE, "sch" + a.domId + kt,
-                            a.name + ": змінився графік на сьогодні",
-                            "Зараз: " + nowText(cur) + "\n\n" + Status.daySummary(t),
-                            Status.color(Status.YELLOW));
+                            a.name + ": графік на сьогодні змінився",
+                            Status.restOfDay(t, ni), Status.color(Status.YELLOW));
                 }
                 fresh.put(kt, ht);
 
@@ -137,6 +137,20 @@ final class Alerts {
 
             st.saveNotifyState(a.domId, ns);
         }
+    }
+
+    /** Did any slot from "from" to midnight change? "saved" is Arrays.toString() of the old day. */
+    private static boolean changedFrom(String saved, int[] now, int from) {
+        String[] p = saved.replace("[", "").replace("]", "").split(",");
+        if (p.length != now.length) return !saved.equals(Arrays.toString(now));
+        for (int i = from; i < now.length; i++) {
+            try {
+                if (Integer.parseInt(p[i].trim()) != now[i]) return true;
+            } catch (NumberFormatException e) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void emergency(Context ctx, Address a, String queue, boolean started, Status cur) {

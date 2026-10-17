@@ -49,6 +49,9 @@ public class MainActivity extends AppCompatActivity {
 
     private View cardUpdate;
     private ViewPager2 pager;
+    private ChipGroup chips;
+    private final List<Integer> chipIds = new ArrayList<>();
+    private String chipsKey;
     private int navInset;   // space to keep free at the bottom for the (transparent) gesture bar
     private final PagesAdapter adapter = new PagesAdapter();
     private boolean refreshing;
@@ -74,9 +77,18 @@ public class MainActivity extends AppCompatActivity {
         pager = findViewById(R.id.pager);
         pager.setAdapter(adapter);
         Bars.smoothPager(pager);
+        chips = findViewById(R.id.main_chips);
         pager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
+            public void onPageScrollStateChanged(int state) {
+                // Swipe starts: the page sliding in starts at the top.
+                // Swipe ends: the page we left goes back to the top too.
+                scrollOthersToTop();
+            }
+
+            @Override
             public void onPageSelected(int position) {
+                checkChip(position);
                 if (ignorePageEvents || position >= list.size()) return;
                 Address x = list.get(position);
                 Store st = new Store(MainActivity.this);
@@ -216,33 +228,59 @@ public class MainActivity extends AppCompatActivity {
         for (int i = 0; i < list.size(); i++) if (active != null && list.get(i).domId == active.domId) idx = i;
 
         ignorePageEvents = true;
+        fillChips();
         adapter.notifyDataSetChanged();
         if (pager.getCurrentItem() != idx) pager.setCurrentItem(idx, false);
+        checkChip(pager.getCurrentItem());
         pager.post(() -> ignorePageEvents = false);
 
         renderUpdate();
     }
 
-    /** Big centred "Дім / Робота" buttons at the top of each page. Long press = rename. */
-    private void fillChips(ChipGroup group, int pagePos) {
-        group.removeAllViews();
+    /** Pages that are not the one on screen go back to the top. */
+    private void scrollOthersToTop() {
+        if (!(pager.getChildAt(0) instanceof RecyclerView)) return;
+        RecyclerView rv = (RecyclerView) pager.getChildAt(0);
+        int cur = pager.getCurrentItem();
+        for (int i = 0; i < rv.getChildCount(); i++) {
+            View child = rv.getChildAt(i);
+            RecyclerView.ViewHolder h = rv.getChildViewHolder(child);
+            if (h != null && h.getAdapterPosition() != cur) child.scrollTo(0, 0);
+        }
+    }
+
+    private void checkChip(int pos) {
+        if (pos >= 0 && pos < chipIds.size()) chips.check(chipIds.get(pos));
+    }
+
+    /**
+     * Big centred "Дім / Робота" buttons above the pages. They stay in place; swiping only moves
+     * the selection. Long press = edit.
+     */
+    private void fillChips() {
+        StringBuilder key = new StringBuilder();
+        for (Address x : list) key.append(x.domId).append(':').append(x.name).append('\n');
+        if (key.toString().equals(chipsKey)) return;   // nothing changed: keep the buttons as they are
+        chipsKey = key.toString();
+        chips.removeAllViews();
+        chipIds.clear();
         if (list.size() < 2) {
-            group.setVisibility(View.GONE);
+            chips.setVisibility(View.GONE);
             return;
         }
-        group.setVisibility(View.VISIBLE);
+        chips.setVisibility(View.VISIBLE);
         LayoutInflater inf = getLayoutInflater();
         for (int i = 0; i < list.size(); i++) {
             final int pos = i;
             Address x = list.get(i);
-            Chip chip = (Chip) inf.inflate(R.layout.chip_address, group, false);
+            Chip chip = (Chip) inf.inflate(R.layout.chip_address, chips, false);
             chip.setId(View.generateViewId());
             chip.setText(x.name);
-            group.addView(chip);
-            if (i == pagePos) group.check(chip.getId());
+            chips.addView(chip);
+            chipIds.add(chip.getId());
             chip.setOnClickListener(v -> {
-                if (pos != pagePos) pager.setCurrentItem(pos, true);
-                else group.check(v.getId());
+                if (pos != pager.getCurrentItem()) pager.setCurrentItem(pos, true);
+                else checkChip(pos);
             });
             chip.setOnLongClickListener(v -> {
                 startActivity(new Intent(this, AddAddressActivity.class)
@@ -313,12 +351,11 @@ public class MainActivity extends AppCompatActivity {
         final ImageView hIcon;
         final LinearLayout mNext;
         final HourGridView mTodayGrid, mTomorrowGrid;
-        final ChipGroup chips;
         final View content;
+        int boundPos = -1;
 
         Page(View v) {
             super(v);
-            chips = v.findViewById(R.id.page_chips);
             content = v.findViewById(R.id.page_content);
             addrBox = v.findViewById(R.id.p_addr_box);
             addrName = v.findViewById(R.id.p_addr_name);
@@ -345,8 +382,10 @@ public class MainActivity extends AppCompatActivity {
 
         void bind(Address a, int pos) {
             Bars.padBottom(content, navInset);
+            // a reused page showing another address starts at the top
+            if (boundPos != pos) itemView.scrollTo(0, 0);
+            boundPos = pos;
             if (sch == null) return;
-            fillChips(chips, pos);
             Status s = Status.compute(sch, a, now);
 
             // Which address
