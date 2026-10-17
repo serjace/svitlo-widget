@@ -18,6 +18,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -36,6 +37,8 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
     private static final int[] LEADS = {10, 15, 30, 60};
     private static final int[] CHIPS = {R.id.chip_10, R.id.chip_15, R.id.chip_30, R.id.chip_60};
+    private static final int[] INTERVALS = {5, 10, 15, 30};
+    private static final int[] INTERVAL_CHIPS = {R.id.chip_i5, R.id.chip_i10, R.id.chip_i15, R.id.chip_i30};
     private static final int MAX_ROWS = 5;
 
     private TextView mAddress, mStatus, mDetail, mTodayLabel, mNextLabel, mTomorrowLabel,
@@ -107,6 +110,31 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        ChipGroup intervals = findViewById(R.id.cg_interval);
+        int checkedInterval = R.id.chip_i10;
+        for (int i = 0; i < INTERVALS.length; i++) if (INTERVALS[i] == st.interval()) checkedInterval = INTERVAL_CHIPS[i];
+        intervals.check(checkedInterval);
+        intervals.setOnCheckedStateChangeListener((group, ids) -> {
+            if (ids.isEmpty()) return;
+            for (int i = 0; i < INTERVAL_CHIPS.length; i++) {
+                if (INTERVAL_CHIPS[i] == ids.get(0)) {
+                    Store s = new Store(this);
+                    if (s.interval() != INTERVALS[i]) {
+                        s.setInterval(INTERVALS[i]);
+                        runTick();
+                    }
+                }
+            }
+        });
+
+        findViewById(R.id.btn_update).setOnClickListener(v -> {
+            AppUpdate.download(getApplicationContext());
+            findViewById(R.id.card_update).setVisibility(View.GONE);
+            Toast.makeText(this, "Завантаження… Коли завершиться, відкриється встановлення.",
+                    Toast.LENGTH_LONG).show();
+        });
+        ((TextView) findViewById(R.id.m_version)).setText("Версія " + AppUpdate.installedName(this));
+
         Notifier.createChannels(this);
         if (Build.VERSION.SDK_INT >= 33
                 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -123,6 +151,21 @@ public class MainActivity extends AppCompatActivity {
         Store st = new Store(this);
         if (!st.addresses().isEmpty() && System.currentTimeMillis() - st.fetchedAt() > 5 * 60 * 1000L) {
             refresh();
+        }
+        if (System.currentTimeMillis() - st.updateCheckedAt() > 30 * 60 * 1000L) {
+            new Thread(() -> {
+                AppUpdate.check(getApplicationContext(), new Store(getApplicationContext()));
+                runOnUiThread(this::renderUpdate);
+            }).start();
+        }
+    }
+
+    private void renderUpdate() {
+        Store st = new Store(this);
+        boolean show = AppUpdate.available(this, st);
+        findViewById(R.id.card_update).setVisibility(show ? View.VISIBLE : View.GONE);
+        if (show) {
+            ((TextView) findViewById(R.id.tv_update)).setText("Доступна нова версія 1.0." + st.updateCode());
         }
     }
 
@@ -214,6 +257,7 @@ public class MainActivity extends AppCompatActivity {
         if (!refreshing) mUpdated.setText(st.updatedLabel());
 
         renderAddresses(st, a);
+        renderUpdate();
     }
 
     private void renderAddresses(Store st, Address active) {

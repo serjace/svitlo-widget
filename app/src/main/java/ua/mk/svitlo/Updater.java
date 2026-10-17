@@ -40,7 +40,9 @@ final class Updater {
         Context app = ctx.getApplicationContext();
         synchronized (LOCK) {
             Store st = new Store(app);
-            if (fetch) fetchAll(st);
+            if (fetch && fetchAll(st) && System.currentTimeMillis() - st.updateCheckedAt() > 3 * 3600 * 1000L) {
+                AppUpdate.check(app, st);   // new version of the app on GitHub? (every 3 hours)
+            }
             Schedule sch = Schedule.load(st);
             ZonedDateTime now = ZonedDateTime.now(Schedule.ZONE);
             try {
@@ -98,6 +100,8 @@ final class Updater {
         LocalDate today = now.toLocalDate();
         int ni = Status.nowIndex(now);
         ZonedDateTime next = Status.timeOf(today, ni + 1).plusSeconds(5);
+        ZonedDateTime check = now.plusMinutes(st.interval());
+        if (check.isBefore(next)) next = check;
 
         if (sch.hasData && st.flag(Store.F_BEFORE)) {
             int lead = st.lead();

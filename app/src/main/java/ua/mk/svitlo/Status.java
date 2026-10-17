@@ -157,7 +157,8 @@ final class Status {
         int code = c[ni];
         boolean gav = a.gavId > 0 && sch.isEnabled(a.gavId);
         boolean sgav = a.sgavId > 0 && sch.isEnabled(a.sgavId);
-        boolean live = a.gpvId > 0 && sch.isEnabled(a.gpvId);
+        // The website's "outage now" flag for ГПВ queues often stays on long after an outage
+        // ends, so the hourly schedule alone decides. Only ГАВ/СГАВ emergency flags are used.
         int from = ni;   // where the regular list of periods starts
 
         if (gav || sgav) {
@@ -169,32 +170,23 @@ final class Status {
             s.shortDetail = "аварійне відключення";
             s.next.add(new int[]{ni, -1, RED, 1});
             from = ni + 1;
-        } else if (live || code >= Schedule.OFF) {
+        } else if (code >= Schedule.OFF) {
             s.level = RED;
             s.title = "Світла немає";
-            int soft = runEnd(c, ni, Schedule.PROBABLY, Schedule.SURE_OFF);
-            int hard = ni;
-            for (int k = ni; k < soft; k++) if (c[k] >= Schedule.OFF) hard = k + 1;
-            int end = hard > ni ? hard : soft;
-            if (end > ni) {
-                String u = until(now, today, end);
-                s.detail = (hard > ni ? "Має зʼявитися о " : "Має зʼявитися до ") + at(end) + " · через " + u;
-                if (hard > ni && soft > hard) s.detail += "\nМожливо пізніше — до " + at(soft);
-                s.shortDetail = "до " + hm(end) + " · " + u;
-                s.next.add(new int[]{ni, end, RED, 0});
-                from = end;
-            } else {
-                s.detail = "Відключення черги " + a.gpvName + " триває\nЧас повернення невідомий";
-                s.shortDetail = "відключення триває";
-                s.next.add(new int[]{ni, -1, RED, 0});
-                from = ni + 1;
+            int end = runEnd(c, ni, Schedule.OFF, Schedule.SURE_OFF);
+            String u = until(now, today, end);
+            s.detail = "Має зʼявитися о " + at(end) + " · через " + u;
+            if (end < 96 && c[end] == Schedule.PROBABLY) {
+                s.detail += "\nДалі можливі відключення до "
+                        + at(runEnd(c, end, Schedule.PROBABLY, Schedule.PROBABLY));
             }
+            s.shortDetail = "до " + hm(end) + " · " + u;
         } else if (code == Schedule.PROBABLY) {
             s.level = YELLOW;
             s.title = "Можливе відключення";
             int e = runEnd(c, ni, Schedule.PROBABLY, Schedule.PROBABLY);
             String u = until(now, today, e);
-            s.detail = "До " + at(e) + " · ще " + u;
+            s.detail = "Світло, ймовірно, є, але може зникнути\nДо " + at(e) + " · ще " + u;
             s.shortDetail = "до " + hm(e) + " · " + u;
         } else {
             s.level = GREEN;

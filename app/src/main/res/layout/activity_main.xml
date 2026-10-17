@@ -27,6 +27,41 @@
             android:paddingEnd="16dp"
             android:paddingBottom="24dp">
 
+            <!-- New version banner -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_update"
+                style="?attr/materialCardViewOutlinedStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="16dp"
+                    android:paddingTop="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="8dp">
+
+                    <TextView
+                        android:id="@+id/tv_update"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnSurface" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_update"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Оновити" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
             <!-- Status card -->
             <com.google.android.material.card.MaterialCardView
                 style="?attr/materialCardViewFilledStyle"
@@ -222,6 +257,59 @@
                 android:text="Додати адресу"
                 app:icon="@drawable/ic_add" />
 
+            <!-- Data refresh -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="Перевіряти графік"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Як часто завантажувати свіжі дані з сайту."
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/cg_interval"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_i5"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="кожні 5 хв" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_i10"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="кожні 10 хв" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_i15"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="кожні 15 хв" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_i30"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="кожні 30 хв" />
+            </com.google.android.material.chip.ChipGroup>
+
             <!-- Notifications -->
             <TextView
                 android:layout_width="match_parent"
@@ -359,7 +447,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Дані: off.energy.mk.ua (АТ «Миколаївобленерго»), оновлюються приблизно кожні 15 хвилин. Застосунок показує офіційний графік і не може перевірити, чи справді є світло у вашому будинку."
+                android:text="Дані: off.energy.mk.ua (АТ «Миколаївобленерго»). Застосунок показує офіційний графік і не може перевірити, чи справді є світло у вашому будинку."
                 android:textAppearance="?attr/textAppearanceBodySmall"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -369,6 +457,13 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Відкрити сайт" />
+
+            <TextView
+                android:id="@+id/m_version"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 </LinearLayout>

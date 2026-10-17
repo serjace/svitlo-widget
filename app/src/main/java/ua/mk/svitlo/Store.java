@@ -113,6 +113,56 @@ final class Store {
         p.edit().putInt("lead", minutes).apply();
     }
 
+    /** How often to download fresh data, in minutes. */
+    int interval() {
+        return p.getInt("interval", 10);
+    }
+
+    void setInterval(int minutes) {
+        p.edit().putInt("interval", minutes).apply();
+    }
+
+    // ---- app updates ----
+
+    long updateCheckedAt() {
+        return p.getLong("upd_at", 0);
+    }
+
+    void markUpdateChecked() {
+        p.edit().putLong("upd_at", System.currentTimeMillis()).apply();
+    }
+
+    /** Remembers the newest version found on GitHub. */
+    void saveUpdate(int versionCode, String url) {
+        p.edit().putInt("upd_code", versionCode)
+                .putString("upd_url", url)
+                .apply();
+    }
+
+    int updateCode() {
+        return p.getInt("upd_code", 0);
+    }
+
+    String updateUrl() {
+        return p.getString("upd_url", null);
+    }
+
+    int updateNotified() {
+        return p.getInt("upd_notified", 0);
+    }
+
+    void setUpdateNotified(int versionCode) {
+        p.edit().putInt("upd_notified", versionCode).apply();
+    }
+
+    long downloadId() {
+        return p.getLong("upd_dl", -1);
+    }
+
+    void setDownloadId(long id) {
+        p.edit().putLong("upd_dl", id).apply();
+    }
+
     // ---- cached website data ----
 
     String cache(String key) {

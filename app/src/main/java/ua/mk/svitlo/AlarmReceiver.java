@@ -15,7 +15,8 @@ public class AlarmReceiver extends BroadcastReceiver {
             try {
                 Updater.tick(app, false);
                 Store st = new Store(app);
-                if (!isTick || System.currentTimeMillis() - st.fetchedAt() > 12 * 60 * 1000L) {
+                long due = (st.interval() - 1) * 60 * 1000L;
+                if (!isTick || System.currentTimeMillis() - st.fetchedAt() > due) {
                     Updater.requestFetch(app);
                 }
             } finally {
