@@ -205,6 +205,14 @@ final class Status {
         // ends, so the hourly schedule alone decides. Only ГАВ/СГАВ emergency flags are used.
         int from = ni;   // where the regular list of periods starts
 
+        if (!gav && !sgav && a.gpvId == 0) {
+            // Without a queue we know nothing — never pretend there is light.
+            s.title = "Черга невідома";
+            s.set("Сайт не вказав черги для цієї адреси", "Змініть адресу в налаштуваннях",
+                    "Черга невідома — змініть адресу", "черга невідома");
+            return s;
+        }
+
         if (gav || sgav) {
             s.level = RED;
             s.title = "Світла немає";

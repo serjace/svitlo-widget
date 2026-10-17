@@ -16,6 +16,18 @@ final class Address {
     String gpvName = "", gavName = "", sgavName = "";
     boolean notify = true;
     long queuesCheckedAt;
+    /** House whose queues are used. Usually the same house; a neighbour (36 for 36А)
+     *  when the website has no queues for this exact house. */
+    long qDomId;
+    String qDomName = "";
+
+    long queueSource() {
+        return qDomId > 0 ? qDomId : domId;
+    }
+
+    boolean hasQueues() {
+        return gpvId > 0 || gavId > 0 || sgavId > 0;
+    }
 
     JSONObject toJson() {
         JSONObject o = new JSONObject();
@@ -31,6 +43,8 @@ final class Address {
             o.put("sgavN", sgavName);
             o.put("notify", notify);
             o.put("qAt", queuesCheckedAt);
+            o.put("qDom", qDomId);
+            o.put("qDomN", qDomName);
         } catch (JSONException ignored) {
         }
         return o;
@@ -49,6 +63,8 @@ final class Address {
         a.sgavName = o.optString("sgavN");
         a.notify = o.optBoolean("notify", true);
         a.queuesCheckedAt = o.optLong("qAt");
+        a.qDomId = o.optLong("qDom");
+        a.qDomName = o.optString("qDomN");
         return a;
     }
 
@@ -84,6 +100,8 @@ final class Address {
         if (gavId > 0) parts.add("ГАВ " + gavName);
         if (sgavId > 0) parts.add("СГАВ " + sgavName);
         if (parts.isEmpty()) return "черги не знайдено";
-        return String.join(" · ", parts);
+        String s = String.join(" · ", parts);
+        if (qDomId > 0 && qDomId != domId) s += " (як у будинку " + qDomName + ")";
+        return s;
     }
 }

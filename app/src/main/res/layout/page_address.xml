@@ -185,6 +185,16 @@
                     android:lineSpacingExtra="4dp"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="16sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center"
+                    android:text="Весь день ›"
+                    android:textColor="?attr/colorPrimary"
+                    android:textSize="18sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -227,6 +237,17 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp" />
+
+                <TextView
+                    android:id="@+id/m_tomorrow_more"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center"
+                    android:text="Весь день ›"
+                    android:textColor="?attr/colorPrimary"
+                    android:textSize="18sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

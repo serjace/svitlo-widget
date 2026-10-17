@@ -85,7 +85,7 @@ final class Updater {
         for (Address a : list) {
             if (now - a.queuesCheckedAt < 12L * 3600 * 1000) continue;
             try {
-                JSONArray oq = Api.getArray("/api/addr/dom/" + a.domId + "/outage-queue");
+                JSONArray oq = Api.getArray("/api/addr/dom/" + a.queueSource() + "/outage-queue");
                 if (oq.length() > 0) a.applyQueues(oq);
                 a.queuesCheckedAt = now;
                 changed = true;

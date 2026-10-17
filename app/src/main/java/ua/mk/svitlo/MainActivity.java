@@ -26,6 +26,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
@@ -97,6 +98,22 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "Завантаження… Коли завершиться, відкриється встановлення.",
                     Toast.LENGTH_LONG).show();
         });
+
+        Store st0 = new Store(this);
+        if (SettingsActivity.isXiaomi() && !st0.seen("miui_tip")) {
+            st0.markSeen("miui_tip");
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle("Телефон Xiaomi: потрібні 2 дозволи")
+                    .setMessage("Щоб віджет відкривав застосунок, а сповіщення приходили вчасно, "
+                            + "MIUI потребує двох дозволів для «Світло»:\n\n"
+                            + "1. «Автозапуск» — увімкнути.\n\n"
+                            + "2. «Інші дозволи» → «Відображати спливаючі вікна у фоновому режимі» — дозволити.\n\n"
+                            + "Ці кнопки також є в Налаштуваннях (⚙).")
+                    .setPositiveButton("1. Автозапуск", (d, w) -> SettingsActivity.openAutostart(this))
+                    .setNeutralButton("2. Інші дозволи", (d, w) -> SettingsActivity.openMiuiPermissions(this))
+                    .setNegativeButton("Пізніше", null)
+                    .show();
+        }
 
         Notifier.createChannels(this);
         if (Build.VERSION.SDK_INT >= 33
@@ -190,6 +207,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void openDay(Address a, int day) {
+        startActivity(new Intent(this, DayActivity.class)
+                .putExtra(DayActivity.EXTRA_DOM, a.domId)
+                .putExtra(DayActivity.EXTRA_DAY, day));
+    }
+
     private void checkChip(int position) {
         if (position < cgAddresses.getChildCount()) {
             cgAddresses.check(cgAddresses.getChildAt(position).getId());
@@ -243,7 +266,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private class Page extends RecyclerView.ViewHolder {
-        final View addrBox, cardNext, cardToday, cardTomorrow, btnAddFirst;
+        final View addrBox, cardNext, cardToday, cardTomorrow, mTomorrowMore;
+        final MaterialButton btnAddFirst;
         final TextView addrName, addrFull, hTitle, hLine1, hLine2, mTodayLabel, mTomorrowLabel,
                 mTomorrowText, mUpdated;
         final MaterialCardView cardHero;
@@ -272,12 +296,11 @@ public class MainActivity extends AppCompatActivity {
             mTomorrowLabel = v.findViewById(R.id.m_tomorrow_label);
             mTomorrowText = v.findViewById(R.id.m_tomorrow_text);
             mTomorrowGrid = v.findViewById(R.id.m_tomorrow_grid);
+            mTomorrowMore = v.findViewById(R.id.m_tomorrow_more);
             mUpdated = v.findViewById(R.id.m_updated);
             btnRefresh = v.findViewById(R.id.btn_refresh);
             ((TextView) v.findViewById(R.id.m_legend)).setText(legend());
             btnRefresh.setOnClickListener(x -> refresh());
-            btnAddFirst.setOnClickListener(x ->
-                    startActivity(new Intent(MainActivity.this, AddAddressActivity.class)));
         }
 
         void bind(Address a) {
@@ -308,7 +331,19 @@ public class MainActivity extends AppCompatActivity {
             hLine2.setText(s.line2);
             hLine2.setTextColor(on);
             hLine2.setVisibility(s.line2.isEmpty() ? View.GONE : View.VISIBLE);
-            btnAddFirst.setVisibility(a == null ? View.VISIBLE : View.GONE);
+            if (a == null) {
+                btnAddFirst.setText("Додати адресу");
+                btnAddFirst.setOnClickListener(x ->
+                        startActivity(new Intent(MainActivity.this, AddAddressActivity.class)));
+                btnAddFirst.setVisibility(View.VISIBLE);
+            } else if (!a.hasQueues()) {
+                btnAddFirst.setText("Змінити адресу");
+                btnAddFirst.setOnClickListener(x -> startActivity(new Intent(MainActivity.this, AddAddressActivity.class)
+                        .putExtra(AddAddressActivity.EXTRA_REPLACE, a.domId)));
+                btnAddFirst.setVisibility(View.VISIBLE);
+            } else {
+                btnAddFirst.setVisibility(View.GONE);
+            }
 
             boolean show = a != null && sch.hasData;
             cardNext.setVisibility(View.GONE);
@@ -347,6 +382,13 @@ public class MainActivity extends AppCompatActivity {
                     mTomorrowText.setText("Графік ще не опубліковано");
                     mTomorrowGrid.setVisibility(View.GONE);
                 }
+                mTomorrowMore.setVisibility(m != null ? View.VISIBLE : View.GONE);
+
+                // Tap a day to see the whole day
+                cardToday.setOnClickListener(x -> openDay(a, 0));
+                if (m != null) cardTomorrow.setOnClickListener(x -> openDay(a, 1));
+                else cardTomorrow.setOnClickListener(null);
+                cardTomorrow.setClickable(m != null);
             }
             mUpdated.setText(refreshing ? "Оновлення…" : updated);
             btnRefresh.setEnabled(!refreshing);

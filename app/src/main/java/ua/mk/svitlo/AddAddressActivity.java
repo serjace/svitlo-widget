@@ -15,6 +15,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textfield.TextInputLayout;
 
@@ -57,6 +58,12 @@ public class AddAddressActivity extends AppCompatActivity {
     private final MaterialAutoCompleteTextView[] fields = new MaterialAutoCompleteTextView[4];
     private final TextInputLayout[] boxes = new TextInputLayout[4];
     private boolean settingText;
+    /** Houses of the chosen street (to suggest a neighbour when a house has no queues). */
+    private List<Item> houses = new ArrayList<>();
+    /** When editing: the address being replaced (0 = adding a new one). */
+    private long replaceDom;
+
+    static final String EXTRA_REPLACE = "replace_dom";
 
     private EditText etName;
     private Button btnSave;
@@ -68,6 +75,7 @@ public class AddAddressActivity extends AppCompatActivity {
         setContentView(R.layout.activity_add);
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setNavigationOnClickListener(v -> finish());
+        replaceDom = getIntent().getLongExtra(EXTRA_REPLACE, 0);
 
         fields[0] = findViewById(R.id.ac_fil);
         fields[1] = findViewById(R.id.ac_ns);
@@ -106,6 +114,14 @@ public class AddAddressActivity extends AppCompatActivity {
                     }
                 }
             });
+        }
+        if (replaceDom > 0) {
+            Address old = new Store(this).find(replaceDom);
+            toolbar.setTitle("Змінити адресу");
+            if (old != null) {
+                etName.setText(old.name);
+                tvStatus.setText("Зараз: " + old.full + "\nОберіть нову адресу. Назва і сповіщення збережуться.");
+            }
         }
         resetBelow(0);
         load(0, "/api/addr/filii");
@@ -162,6 +178,7 @@ public class AddAddressActivity extends AppCompatActivity {
                 sort(items, lvl == 2, lvl == 3);
                 ui.post(() -> {
                     if (generation[lvl] != gen || isFinishing()) return;
+                    if (lvl == 3) houses = items;
                     fields[lvl].setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, items));
                     boxes[lvl].setEnabled(!items.isEmpty());
                     boxes[lvl].setHelperText(items.isEmpty() ? "Нічого не знайдено" : null);
@@ -208,44 +225,129 @@ public class AddAddressActivity extends AppCompatActivity {
         return i == 0 ? Integer.MAX_VALUE : n;
     }
 
+    private static String queuePath(long domId) {
+        return "/api/addr/dom/" + domId + "/outage-queue";
+    }
+
+    /** Houses with a close number (36 for 36А, then 35, 37…), best first. */
+    private static List<Item> neighbours(Item dom, List<Item> all) {
+        List<Item> r = new ArrayList<>();
+        int n = leadingNumber(dom.name);
+        if (n == Integer.MAX_VALUE) return r;
+        for (Item h : all) {
+            int hn = leadingNumber(h.name);
+            if (h.id != dom.id && hn != Integer.MAX_VALUE && Math.abs(hn - n) <= 2) r.add(h);
+        }
+        String plain = String.valueOf(n);
+        r.sort(Comparator.comparingInt((Item h) -> Math.abs(leadingNumber(h.name) - n))
+                .thenComparingInt(h -> h.name.equals(plain) ? 0 : 1)
+                .thenComparingInt(h -> h.name.length()));
+        return r.size() > 4 ? new ArrayList<>(r.subList(0, 4)) : r;
+    }
+
+    private void saveFailed(String msg) {
+        btnSave.setEnabled(sel[3] != null);
+        tvStatus.setText(msg);
+    }
+
     private void save() {
         Item ns = sel[1], st = sel[2], dom = sel[3];
         if (ns == null || st == null || dom == null) return;
         Context app = getApplicationContext();
-        if (new Store(app).find(dom.id) != null) {
+        if (dom.id != replaceDom && new Store(app).find(dom.id) != null) {
             Toast.makeText(this, "Ця адреса вже є у списку", Toast.LENGTH_LONG).show();
             return;
         }
         String custom = etName.getText() == null ? "" : etName.getText().toString().trim();
+        List<Item> near = neighbours(dom, houses);
         btnSave.setEnabled(false);
         tvStatus.setText("Шукаємо ваші черги…");
         bg.execute(() -> {
             try {
-                JSONArray oq = Api.getArray("/api/addr/dom/" + dom.id + "/outage-queue");
-                Address a = new Address();
-                a.domId = dom.id;
-                a.full = ns.name + ", " + st.name + ", " + dom.name;
-                a.name = custom.isEmpty() ? st.name + ", " + dom.name : custom;
-                a.applyQueues(oq);
-                a.queuesCheckedAt = System.currentTimeMillis();
-
-                Store store = new Store(app);
-                List<Address> list = store.addresses();
-                list.add(a);
-                store.saveAddresses(list);
-                store.setActiveDom(a.domId);
-                Updater.tick(app, true);
-
+                JSONArray oq = Api.getArray(queuePath(dom.id));
+                if (oq.length() > 0) {
+                    finishSave(ns, st, dom, custom, oq, null);
+                    return;
+                }
+                // The website has no queues for this exact house: try the neighbours
+                for (Item n : near) {
+                    JSONArray q2 = Api.getArray(queuePath(n.id));
+                    if (q2.length() > 0) {
+                        ui.post(() -> askNeighbour(ns, st, dom, custom, n, q2));
+                        return;
+                    }
+                }
                 ui.post(() -> {
-                    Toast.makeText(app, "Адресу додано. Черги: " + a.queuesText(), Toast.LENGTH_LONG).show();
-                    finish();
+                    saveFailed("");
+                    new MaterialAlertDialogBuilder(this)
+                            .setTitle("Черги не знайдено")
+                            .setMessage("На сайті Миколаївобленерго для будинку «" + dom.name
+                                    + "» не вказано черг, тому графік показати неможливо.\n\n"
+                                    + "Спробуйте сусідній номер будинку.")
+                            .setPositiveButton("Зрозуміло", null)
+                            .show();
                 });
             } catch (Exception e) {
-                ui.post(() -> {
-                    btnSave.setEnabled(true);
-                    tvStatus.setText("Не вдалося зберегти. Перевірте інтернет і спробуйте ще раз.");
-                });
+                ui.post(() -> saveFailed("Не вдалося зберегти. Перевірте інтернет і спробуйте ще раз."));
             }
+        });
+    }
+
+    private void askNeighbour(Item ns, Item st, Item dom, String custom, Item n, JSONArray q2) {
+        Address tmp = new Address();
+        tmp.applyQueues(q2);
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Черги для «" + dom.name + "» не вказано")
+                .setMessage("На сайті Миколаївобленерго для будинку «" + dom.name + "» немає черг.\n\n"
+                        + "У сусіднього будинку «" + n.name + "»: " + tmp.queuesText()
+                        + ". Найімовірніше, у вас така сама.\n\n"
+                        + "Використати черги будинку «" + n.name + "»?")
+                .setPositiveButton("Так, використати", (d, w) ->
+                        bg.execute(() -> finishSave(ns, st, dom, custom, q2, n)))
+                .setNegativeButton("Обрати інший будинок", (d, w) -> saveFailed(""))
+                .setOnCancelListener(d -> saveFailed(""))
+                .show();
+    }
+
+    /** Runs in the background: saves (or replaces) the address and closes the screen. */
+    private void finishSave(Item ns, Item st, Item dom, String custom, JSONArray oq, Item from) {
+        Context app = getApplicationContext();
+        Address a = new Address();
+        a.domId = dom.id;
+        a.full = ns.name + ", " + st.name + ", " + dom.name;
+        a.name = custom.isEmpty() ? st.name + ", " + dom.name : custom;
+        a.applyQueues(oq);
+        a.queuesCheckedAt = System.currentTimeMillis();
+        if (from != null) {
+            a.qDomId = from.id;
+            a.qDomName = from.name;
+        }
+
+        Store store = new Store(app);
+        List<Address> list = store.addresses();
+        boolean replaced = false;
+        if (replaceDom > 0) {
+            for (int i = 0; i < list.size(); i++) {
+                Address old = list.get(i);
+                if (old.domId == replaceDom) {
+                    a.notify = old.notify;
+                    if (custom.isEmpty()) a.name = old.name;
+                    list.set(i, a);
+                    store.replaceDomRefs(old.domId, a.domId);
+                    replaced = true;
+                    break;
+                }
+            }
+        }
+        if (!replaced) list.add(a);
+        store.saveAddresses(list);
+        store.setActiveDom(a.domId);
+        Updater.tick(app, true);
+
+        String msg = (replaced ? "Адресу змінено. " : "Адресу додано. ") + "Черги: " + a.queuesText();
+        ui.post(() -> {
+            Toast.makeText(app, msg, Toast.LENGTH_LONG).show();
+            finish();
         });
     }
 }

@@ -71,6 +71,29 @@ final class Store {
         p.edit().remove("ns_" + domId).apply();
     }
 
+    /** An address was changed to another house: move widget links and the "shown" mark to it. */
+    void replaceDomRefs(long oldDom, long newDom) {
+        SharedPreferences.Editor e = p.edit();
+        for (java.util.Map.Entry<String, ?> en : p.getAll().entrySet()) {
+            if (en.getKey().startsWith("w_") && en.getValue() instanceof Long
+                    && (Long) en.getValue() == oldDom) {
+                e.putLong(en.getKey(), newDom);
+            }
+        }
+        if (p.getLong("active", -1) == oldDom) e.putLong("active", newDom);
+        e.remove("ns_" + oldDom);
+        e.apply();
+    }
+
+    /** One-time tips. */
+    boolean seen(String key) {
+        return p.getBoolean("seen_" + key, false);
+    }
+
+    void markSeen(String key) {
+        p.edit().putBoolean("seen_" + key, true).apply();
+    }
+
     // ---- widgets ----
 
     Address widgetAddress(int widgetId) {

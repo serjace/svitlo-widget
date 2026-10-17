@@ -79,12 +79,15 @@ public class SettingsActivity extends AppCompatActivity {
         });
         btnBattery.setOnClickListener(v -> askBattery());
 
-        // Xiaomi / Redmi / POCO (MIUI) block background work unless "Автозапуск" is on
-        String maker = Build.MANUFACTURER == null ? "" : Build.MANUFACTURER.toLowerCase();
-        View autostart = findViewById(R.id.btn_autostart);
-        if (maker.contains("xiaomi") || maker.contains("redmi") || maker.contains("poco")) {
+        // Xiaomi / Redmi / POCO (MIUI) block background work and opening the app from a widget
+        // unless "Автозапуск" and "pop-up windows in background" are allowed
+        if (isXiaomi()) {
+            View autostart = findViewById(R.id.btn_autostart);
             autostart.setVisibility(View.VISIBLE);
-            autostart.setOnClickListener(v -> openAutostart());
+            autostart.setOnClickListener(v -> openAutostart(this));
+            View popup = findViewById(R.id.btn_miui_popup);
+            popup.setVisibility(View.VISIBLE);
+            popup.setOnClickListener(v -> openMiuiPermissions(this));
         }
         ((TextView) findViewById(R.id.m_version)).setText("Версія " + AppUpdate.installedName(this));
 
@@ -194,6 +197,8 @@ public class SettingsActivity extends AppCompatActivity {
             });
 
             row.findViewById(R.id.a_edit).setOnClickListener(v -> rename(this, a.domId, this::renderAddresses));
+            row.findViewById(R.id.a_change).setOnClickListener(v -> startActivity(
+                    new Intent(this, AddAddressActivity.class).putExtra(AddAddressActivity.EXTRA_REPLACE, a.domId)));
 
             ImageButton del = row.findViewById(R.id.a_delete);
             del.setOnClickListener(v -> new MaterialAlertDialogBuilder(this)
@@ -236,15 +241,44 @@ public class SettingsActivity extends AppCompatActivity {
         }
     }
 
-    private void openAutostart() {
+    static boolean isXiaomi() {
+        String maker = Build.MANUFACTURER == null ? "" : Build.MANUFACTURER.toLowerCase();
+        return maker.contains("xiaomi") || maker.contains("redmi") || maker.contains("poco");
+    }
+
+    private static void openAppDetails(Context ctx) {
         try {
-            startActivity(new Intent().setComponent(new ComponentName("com.miui.securitycenter",
+            ctx.startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:" + ctx.getPackageName())));
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** MIUI "Автозапуск" list. */
+    static void openAutostart(Context ctx) {
+        try {
+            ctx.startActivity(new Intent().setComponent(new ComponentName("com.miui.securitycenter",
                     "com.miui.permcenter.autostart.AutoStartManagementActivity")));
         } catch (Exception e) {
+            openAppDetails(ctx);
+        }
+    }
+
+    /** MIUI "Інші дозволи" for this app, where "pop-up windows in background" lives. */
+    static void openMiuiPermissions(Context ctx) {
+        try {
+            ctx.startActivity(new Intent("miui.intent.action.APP_PERM_EDITOR")
+                    .setClassName("com.miui.securitycenter",
+                            "com.miui.permcenter.permissions.PermissionsEditorActivity")
+                    .putExtra("extra_pkgname", ctx.getPackageName()));
+        } catch (Exception e) {
             try {
-                startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                        Uri.parse("package:" + getPackageName())));
-            } catch (Exception ignored) {
+                ctx.startActivity(new Intent("miui.intent.action.APP_PERM_EDITOR")
+                        .setClassName("com.miui.securitycenter",
+                                "com.miui.permcenter.permissions.AppPermissionsEditorActivity")
+                        .putExtra("extra_pkgname", ctx.getPackageName()));
+            } catch (Exception e2) {
+                openAppDetails(ctx);
             }
         }
     }

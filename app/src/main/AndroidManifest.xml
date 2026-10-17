@@ -35,6 +35,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".DayActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".AddAddressActivity"
             android:exported="false"
             android:label="@string/add_address" />

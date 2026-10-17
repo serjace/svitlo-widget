@@ -51,7 +51,7 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Address switcher + swipe hint (only when there are 2+ addresses) -->
+    <!-- Address switcher (only when there are 2+ addresses) -->
     <LinearLayout
         android:id="@+id/switcher"
         android:layout_width="match_parent"
@@ -73,17 +73,6 @@
                 app:singleLine="true"
                 app:singleSelection="true" />
         </HorizontalScrollView>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="4dp"
-            android:gravity="center"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:text="Гортайте вліво або вправо, щоб перемкнути адресу"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:textSize="14sp" />
     </LinearLayout>
 
     <androidx.viewpager2.widget.ViewPager2
