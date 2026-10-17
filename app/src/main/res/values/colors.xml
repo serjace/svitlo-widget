@@ -1,8 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="screen_bg">#F2F4F7</color>
-    <color name="card_bg">#FFFFFF</color>
-    <color name="text_main">#1B1F24</color>
-    <color name="text_muted">#5F6B7A</color>
-    <color name="icon_bg">#1E4D8C</color>
+    <bool name="light_bars">true</bool>
+    <color name="icon_bg">#F0F7FD</color>
+
+    <!-- Status colours (light theme) -->
+    <color name="st_on_container">#C3EFAD</color>
+    <color name="st_on_content">#0C3900</color>
+    <color name="st_on_strong">#2E7D32</color>
+    <color name="st_maybe_container">#FFE08A</color>
+    <color name="st_maybe_content">#4A3500</color>
+    <color name="st_maybe_strong">#E0A800</color>
+    <color name="st_off_container">#FFDAD6</color>
+    <color name="st_off_content">#690005</color>
+    <color name="st_off_strong">#D32F2F</color>
+    <color name="st_unknown_container">#E2E2E9</color>
+    <color name="st_unknown_content">#44474F</color>
+    <color name="st_unknown_strong">#9E9E9E</color>
+
+    <!-- Widget (light theme, Android 11 and older) -->
+    <color name="widget_bg">#EEF0F8</color>
+    <color name="widget_on">#1A1B20</color>
+    <color name="widget_sub">#44474F</color>
+    <color name="widget_muted">#74777F</color>
+    <color name="widget_line">#DADCE5</color>
 </resources>

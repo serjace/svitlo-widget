@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Widget on Android 12+: Material You colours from the wallpaper (light) -->
+    <color name="widget_bg">@android:color/system_accent2_50</color>
+    <color name="widget_on">@android:color/system_neutral1_900</color>
+    <color name="widget_sub">@android:color/system_neutral2_700</color>
+    <color name="widget_muted">@android:color/system_neutral2_500</color>
+    <color name="widget_line">@android:color/system_accent2_100</color>
+</resources>

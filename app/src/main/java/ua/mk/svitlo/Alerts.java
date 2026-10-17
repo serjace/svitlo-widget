@@ -50,7 +50,7 @@ final class Alerts {
                 if (tell && old.has(kt) && !ht.equals(old.optString(kt))) {
                     Notifier.show(ctx, Notifier.CH_SCHEDULE, "sch" + a.domId + kt,
                             "Графік на сьогодні змінено",
-                            a.name + "\n" + Status.describeDay(t), Status.color(Status.ORANGE));
+                            a.name + "\n" + Status.describeDay(t), Status.color(Status.YELLOW));
                 }
                 fresh.put(kt, ht);
 
@@ -66,7 +66,7 @@ final class Alerts {
                     } else if (tell && !hmh.equals(old.optString(km))) {
                         Notifier.show(ctx, Notifier.CH_SCHEDULE, "sch" + a.domId + km,
                                 "Графік на завтра (" + date + ") змінено",
-                                a.name + "\n" + Status.describeDay(m), Status.color(Status.ORANGE));
+                                a.name + "\n" + Status.describeDay(m), Status.color(Status.YELLOW));
                     }
                     fresh.put(km, hmh);
                 } else if (old.has(km)) {
@@ -90,11 +90,10 @@ final class Alerts {
                                 if (!st.wasSent(key)) {
                                     st.markSent(key);
                                     int end = Status.runEnd(c, j, Schedule.OFF, Schedule.SURE_OFF);
-                                    String kind = c[j] == Schedule.SURE_OFF ? "актуальне" : "заплановане";
                                     Notifier.show(ctx, Notifier.CH_OUTAGE, key,
                                             "Через " + mins + " хв — відключення світла",
-                                            a.name + ": " + Status.range(j, end) + " (" + kind + ")",
-                                            Status.color(Status.ORANGE));
+                                            a.name + ": " + Status.range(j, end),
+                                            Status.color(Status.RED));
                                 }
                             }
                             break;

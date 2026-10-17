@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <bool name="light_bars">false</bool>
+    <color name="icon_bg">#112239</color>
+
+    <!-- Status colours (dark theme) -->
+    <color name="st_on_container">#1E4D10</color>
+    <color name="st_on_content">#C3EFAD</color>
+    <color name="st_on_strong">#7BC96B</color>
+    <color name="st_maybe_container">#5A4300</color>
+    <color name="st_maybe_content">#FFE08A</color>
+    <color name="st_maybe_strong">#F2C230</color>
+    <color name="st_off_container">#7A1C1C</color>
+    <color name="st_off_content">#FFDAD6</color>
+    <color name="st_off_strong">#FF6B60</color>
+    <color name="st_unknown_container">#33353C</color>
+    <color name="st_unknown_content">#C4C6D0</color>
+    <color name="st_unknown_strong">#8E9099</color>
+
+    <!-- Widget (dark theme, Android 11 and older) -->
+    <color name="widget_bg">#23262F</color>
+    <color name="widget_on">#E3E2E9</color>
+    <color name="widget_sub">#C4C6D0</color>
+    <color name="widget_muted">#8E9099</color>
+    <color name="widget_line">#3A3D46</color>
+</resources>

@@ -1,18 +1,22 @@
 package ua.mk.svitlo;
 
-import android.app.Activity;
 import android.content.Context;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.view.View;
-import android.widget.AdapterView;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.textfield.MaterialAutoCompleteTextView;
+import com.google.android.material.textfield.TextInputLayout;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -26,7 +30,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /** Pick Дільниця → Населений пункт → Вулиця → Будинок, same as on the website. */
-public class AddAddressActivity extends Activity {
+public class AddAddressActivity extends AppCompatActivity {
 
     static final class Item {
         final long id;
@@ -43,15 +47,17 @@ public class AddAddressActivity extends Activity {
         }
     }
 
-    interface Loaded {
-        void run(List<Item> items);
-    }
+    private static final String[] ID_KEY = {"idfilial", "idnaspunkt", "idstreet", "iddom"};
+    private static final String[] NAME_KEY = {"fullname", "naznaspunkt", "nazstreet", "nazdom"};
 
     private final ExecutorService bg = Executors.newSingleThreadExecutor();
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final int[] generation = new int[4];
+    private final Item[] sel = new Item[4];
+    private final MaterialAutoCompleteTextView[] fields = new MaterialAutoCompleteTextView[4];
+    private final TextInputLayout[] boxes = new TextInputLayout[4];
+    private boolean settingText;
 
-    private Spinner spFil, spNs, spSt, spDom;
     private EditText etName;
     private Button btnSave;
     private TextView tvStatus;
@@ -60,51 +66,49 @@ public class AddAddressActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add);
-        spFil = findViewById(R.id.sp_fil);
-        spNs = findViewById(R.id.sp_ns);
-        spSt = findViewById(R.id.sp_st);
-        spDom = findViewById(R.id.sp_dom);
+        MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        toolbar.setNavigationOnClickListener(v -> finish());
+
+        fields[0] = findViewById(R.id.ac_fil);
+        fields[1] = findViewById(R.id.ac_ns);
+        fields[2] = findViewById(R.id.ac_st);
+        fields[3] = findViewById(R.id.ac_dom);
+        boxes[0] = findViewById(R.id.til_fil);
+        boxes[1] = findViewById(R.id.til_ns);
+        boxes[2] = findViewById(R.id.til_st);
+        boxes[3] = findViewById(R.id.til_dom);
         etName = findViewById(R.id.et_name);
         btnSave = findViewById(R.id.btn_save);
         tvStatus = findViewById(R.id.tv_status);
 
-        clear(spNs, "— спершу оберіть дільницю —");
-        clear(spSt, "— спершу оберіть населений пункт —");
-        clear(spDom, "— спершу оберіть вулицю —");
-        clear(spFil, "Завантаження…");
+        for (int i = 0; i < 4; i++) {
+            final int lvl = i;
+            fields[i].setOnItemClickListener((parent, view, position, id) -> {
+                Object o = parent.getItemAtPosition(position);
+                if (o instanceof Item) select(lvl, (Item) o);
+            });
+            fields[i].addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                }
 
-        load(0, "/api/addr/filii", "idfilial", "fullname", false,
-                items -> setItems(spFil, items, "— оберіть дільницю —"));
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                }
 
-        spFil.setOnItemSelectedListener(listener(() -> {
-            clear(spNs, "— спершу оберіть дільницю —");
-            clear(spSt, "— спершу оберіть населений пункт —");
-            clear(spDom, "— спершу оберіть вулицю —");
-            Item f = selected(spFil);
-            if (f != null) {
-                load(1, "/api/addr/filii/" + f.id + "/ns", "idnaspunkt", "naznaspunkt", false,
-                        items -> setItems(spNs, items, "— оберіть населений пункт —"));
-            }
-        }));
-        spNs.setOnItemSelectedListener(listener(() -> {
-            clear(spSt, "— спершу оберіть населений пункт —");
-            clear(spDom, "— спершу оберіть вулицю —");
-            Item n = selected(spNs);
-            if (n != null) {
-                load(2, "/api/addr/ns/" + n.id + "/street", "idstreet", "nazstreet", true,
-                        items -> setItems(spSt, items, "— оберіть вулицю —"));
-            }
-        }));
-        spSt.setOnItemSelectedListener(listener(() -> {
-            clear(spDom, "— спершу оберіть вулицю —");
-            Item s = selected(spSt);
-            if (s != null) {
-                load(3, "/api/addr/street/" + s.id + "/dom", "iddom", "nazdom", false,
-                        items -> setItems(spDom, items, "— оберіть будинок —"));
-            }
-        }));
-        spDom.setOnItemSelectedListener(listener(() -> btnSave.setEnabled(selected(spDom) != null)));
-
+                @Override
+                public void afterTextChanged(Editable s) {
+                    if (settingText) return;
+                    if (sel[lvl] != null && !s.toString().equals(sel[lvl].name)) {
+                        sel[lvl] = null;
+                        resetBelow(lvl);
+                        updateSave();
+                    }
+                }
+            });
+        }
+        resetBelow(0);
+        load(0, "/api/addr/filii");
         btnSave.setOnClickListener(v -> save());
     }
 
@@ -114,43 +118,64 @@ public class AddAddressActivity extends Activity {
         bg.shutdown();
     }
 
-    private AdapterView.OnItemSelectedListener listener(Runnable r) {
-        return new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                r.run();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-                r.run();
-            }
-        };
+    private void select(int lvl, Item it) {
+        sel[lvl] = it;
+        resetBelow(lvl);
+        if (lvl == 0) load(1, "/api/addr/filii/" + it.id + "/ns");
+        else if (lvl == 1) load(2, "/api/addr/ns/" + it.id + "/street");
+        else if (lvl == 2) load(3, "/api/addr/street/" + it.id + "/dom");
+        updateSave();
     }
 
-    private void load(int level, String path, String idKey, String nameKey, boolean streets, Loaded done) {
-        // anything still loading for this level or below is now outdated
-        for (int i = level; i < generation.length; i++) generation[i]++;
-        final int gen = generation[level];
-        tvStatus.setText("Завантаження…");
+    /** Empties and disables every field below the given level. */
+    private void resetBelow(int lvl) {
+        for (int i = lvl + 1; i < 4; i++) {
+            generation[i]++;
+            sel[i] = null;
+            settingText = true;
+            fields[i].setText("", false);
+            settingText = false;
+            fields[i].setAdapter(new ArrayAdapter<Item>(this, android.R.layout.simple_list_item_1, new ArrayList<>()));
+            boxes[i].setEnabled(false);
+            boxes[i].setHelperText(null);
+        }
+        updateSave();
+    }
+
+    private void updateSave() {
+        btnSave.setEnabled(sel[3] != null);
+    }
+
+    private void load(int lvl, String path) {
+        generation[lvl]++;
+        final int gen = generation[lvl];
+        boxes[lvl].setEnabled(false);
+        boxes[lvl].setHelperText("Завантаження…");
         bg.execute(() -> {
             try {
                 JSONArray arr = Api.getArray(path);
                 List<Item> items = new ArrayList<>();
                 for (int i = 0; i < arr.length(); i++) {
                     JSONObject o = arr.getJSONObject(i);
-                    items.add(new Item(o.getLong(idKey), o.optString(nameKey).trim()));
+                    items.add(new Item(o.getLong(ID_KEY[lvl]), o.optString(NAME_KEY[lvl]).trim()));
                 }
-                sort(items, streets, "nazdom".equals(nameKey));
+                sort(items, lvl == 2, lvl == 3);
                 ui.post(() -> {
-                    if (generation[level] != gen || isFinishing()) return;
-                    tvStatus.setText("");
-                    done.run(items);
+                    if (generation[lvl] != gen || isFinishing()) return;
+                    fields[lvl].setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, items));
+                    boxes[lvl].setEnabled(!items.isEmpty());
+                    boxes[lvl].setHelperText(items.isEmpty() ? "Нічого не знайдено" : null);
+                    if (items.size() == 1) {
+                        settingText = true;
+                        fields[lvl].setText(items.get(0).name, false);
+                        settingText = false;
+                        select(lvl, items.get(0));
+                    }
                 });
             } catch (Exception e) {
                 ui.post(() -> {
-                    if (generation[level] != gen) return;
-                    tvStatus.setText("Не вдалося завантажити. Перевірте інтернет і спробуйте ще раз.");
+                    if (generation[lvl] != gen || isFinishing()) return;
+                    boxes[lvl].setHelperText("Не вдалося завантажити. Перевірте інтернет і відкрийте екран знову.");
                 });
             }
         });
@@ -183,42 +208,15 @@ public class AddAddressActivity extends Activity {
         return i == 0 ? Integer.MAX_VALUE : n;
     }
 
-    private void setItems(Spinner sp, List<Item> items, String placeholder) {
-        List<Item> all = new ArrayList<>();
-        all.add(new Item(0, placeholder));
-        all.addAll(items);
-        ArrayAdapter<Item> ad = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, all);
-        ad.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        sp.setAdapter(ad);
-        sp.setEnabled(!items.isEmpty());
-        if (items.isEmpty()) tvStatus.setText("Нічого не знайдено");
-    }
-
-    private void clear(Spinner sp, String placeholder) {
-        List<Item> one = new ArrayList<>();
-        one.add(new Item(0, placeholder));
-        ArrayAdapter<Item> ad = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, one);
-        ad.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        sp.setAdapter(ad);
-        sp.setEnabled(false);
-        if (sp == spDom && btnSave != null) btnSave.setEnabled(false);
-    }
-
-    private static Item selected(Spinner sp) {
-        Object o = sp.getSelectedItem();
-        if (o instanceof Item && ((Item) o).id != 0) return (Item) o;
-        return null;
-    }
-
     private void save() {
-        Item ns = selected(spNs), st = selected(spSt), dom = selected(spDom);
+        Item ns = sel[1], st = sel[2], dom = sel[3];
         if (ns == null || st == null || dom == null) return;
         Context app = getApplicationContext();
         if (new Store(app).find(dom.id) != null) {
             Toast.makeText(this, "Ця адреса вже є у списку", Toast.LENGTH_LONG).show();
             return;
         }
-        String custom = etName.getText().toString().trim();
+        String custom = etName.getText() == null ? "" : etName.getText().toString().trim();
         btnSave.setEnabled(false);
         tvStatus.setText("Шукаємо ваші черги…");
         bg.execute(() -> {

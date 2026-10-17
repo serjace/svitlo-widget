@@ -45,3 +45,8 @@ android {
         abortOnError false
     }
 }
+
+dependencies {
+    // Google's official Material 3 design components (dark mode, Material You colours)
+    implementation 'com.google.android.material:material:1.12.0'
+}

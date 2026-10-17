@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Світло</string>
-    <string name="widget_name">Світло — графік</string>
-    <string name="widget_description">Чи є світло за вашою адресою (Миколаївобленерго)</string>
+    <string name="widget_name">Світло</string>
+    <string name="widget_description">Чи є світло і коли зміниться (Миколаївобленерго)</string>
+    <string name="small_widget_name">Світло — компактний</string>
+    <string name="small_widget_description">Лише статус і час</string>
     <string name="add_address">Додати адресу</string>
 </resources>

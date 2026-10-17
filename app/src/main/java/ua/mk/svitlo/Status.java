@@ -1,46 +1,36 @@
 package ua.mk.svitlo;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/** Works out "is there light now" for an address, and formats times. */
+/** Works out "is there light now, and when does it change" for an address. */
 final class Status {
-    static final int UNKNOWN = -1, GREEN = 0, YELLOW = 1, ORANGE = 2, RED = 3;
+    static final int UNKNOWN = Timeline.UNKNOWN, GREEN = Timeline.ON, YELLOW = Timeline.MAYBE, RED = Timeline.OFF;
 
     int level = UNKNOWN;
     String title = "";
     String detail = "";
+    String shortDetail = "";
+    int nowIdx;
+    /** Upcoming periods: {start, end (-1 = unknown), level, emergency 0/1}, slot indexes from today 00:00. */
+    final List<int[]> next = new ArrayList<>();
 
+    /** Fixed accent colour (used for notifications). */
     static int color(int level) {
         switch (level) {
-            case GREEN: return 0xFF43A047;
-            case YELLOW: return 0xFFFBC02D;
-            case ORANGE: return 0xFFFB8C00;
-            case RED: return 0xFFE53935;
+            case GREEN: return 0xFF2E7D32;
+            case YELLOW: return 0xFFE0A800;
+            case RED: return 0xFFD32F2F;
             default: return 0xFF9E9E9E;
-        }
-    }
-
-    /** Colour of one half-hour cell in the timeline. */
-    static int cellColor(int code) {
-        switch (code) {
-            case Schedule.ENABLE: return color(GREEN);
-            case Schedule.PROBABLY: return color(YELLOW);
-            case Schedule.OFF: return color(ORANGE);
-            case Schedule.SURE_OFF: return color(RED);
-            default: return color(UNKNOWN);
         }
     }
 
     static int nowIndex(ZonedDateTime now) {
         return now.getHour() * 2 + now.getMinute() / 30;
-    }
-
-    static float nowFraction(ZonedDateTime now) {
-        return (now.getHour() * 60 + now.getMinute()) / 1440f;
     }
 
     /** "14:30" for a slot index (0..96, counting from today 00:00). */
@@ -50,12 +40,26 @@ final class Status {
         return String.format(Locale.US, "%02d:%02d", i / 2, (i % 2) * 30);
     }
 
+    /** Like hm(), but marks times that are tomorrow. */
+    static String at(int idx) {
+        return idx > 48 ? hm(idx) + " (завтра)" : hm(idx);
+    }
+
     static String range(int start, int end) {
         return hm(start) + "–" + hm(end) + (start >= 48 ? " (завтра)" : "");
     }
 
     static ZonedDateTime timeOf(LocalDate today, int idx) {
         return ZonedDateTime.of(today.plusDays(idx / 48).atTime((idx % 48) / 2, (idx % 2) * 30), Schedule.ZONE);
+    }
+
+    /** "43 хв", "2 год 15 хв" from now until the slot. */
+    static String until(ZonedDateTime now, LocalDate today, int idx) {
+        long mins = (Duration.between(now, timeOf(today, idx)).getSeconds() + 59) / 60;
+        if (mins < 1) mins = 1;
+        if (mins < 60) return mins + " хв";
+        long h = mins / 60, m = mins % 60;
+        return m == 0 ? h + " год" : h + " год " + m + " хв";
     }
 
     /** Today + tomorrow as 96 slots; -1 where tomorrow is not published yet. */
@@ -95,6 +99,7 @@ final class Status {
         return r;
     }
 
+    /** One-day summary used in notifications and in the app. */
     static String describeDay(int[] slots) {
         List<int[]> off = runs(slots, Schedule.OFF, Schedule.SURE_OFF);
         List<int[]> maybe = runs(slots, Schedule.PROBABLY, Schedule.PROBABLY);
@@ -109,7 +114,7 @@ final class Status {
             }
         }
         if (!maybe.isEmpty()) {
-            b.append("\nМожливі відключення: ");
+            b.append("\nМожливі: ");
             for (int i = 0; i < maybe.size(); i++) {
                 if (i > 0) b.append(", ");
                 b.append(range(maybe.get(i)[0], maybe.get(i)[1]));
@@ -118,60 +123,108 @@ final class Status {
         return b.toString();
     }
 
+    /** Time column of a period row: "зараз–12:00", "12:30–24:00". */
+    static String rowTime(int[] r, int nowIdx) {
+        String start = r[0] == nowIdx ? "зараз" : hm(r[0]);
+        return r[1] < 0 ? start : start + "–" + hm(r[1]);
+    }
+
+    /** Text column of a period row. */
+    static String rowLabel(int[] r) {
+        String n = r[3] == 1 ? "Аварійне відключення" : Timeline.name(r[2]);
+        if (r[0] >= 48) n += " · завтра";
+        return n;
+    }
+
     static Status compute(Schedule sch, Address a, ZonedDateTime now) {
         Status s = new Status();
         if (a == null) {
             s.title = "Додайте адресу";
             s.detail = "Відкрийте застосунок і оберіть адресу";
+            s.shortDetail = "немає адреси";
             return s;
         }
         if (!sch.hasData) {
             s.title = "Немає даних";
             s.detail = "Перевірте інтернет і натисніть «Оновити»";
+            s.shortDetail = "немає даних";
             return s;
         }
         LocalDate today = now.toLocalDate();
         int[] c = combined(sch, a, today);
         int ni = nowIndex(now);
+        s.nowIdx = ni;
         int code = c[ni];
         boolean gav = a.gavId > 0 && sch.isEnabled(a.gavId);
         boolean sgav = a.sgavId > 0 && sch.isEnabled(a.sgavId);
         boolean live = a.gpvId > 0 && sch.isEnabled(a.gpvId);
+        int from = ni;   // where the regular list of periods starts
 
         if (gav || sgav) {
             s.level = RED;
             s.title = "Світла немає";
             String which = gav && sgav ? "ГАВ " + a.gavName + ", СГАВ " + a.sgavName
                     : gav ? "ГАВ " + a.gavName : "СГАВ " + a.sgavName;
-            s.detail = "Аварійне відключення (" + which + ")";
-        } else if (live || code == Schedule.SURE_OFF) {
+            s.detail = "Аварійне відключення (" + which + ")\nЧас повернення невідомий";
+            s.shortDetail = "аварійне відключення";
+            s.next.add(new int[]{ni, -1, RED, 1});
+            from = ni + 1;
+        } else if (live || code >= Schedule.OFF) {
             s.level = RED;
             s.title = "Світла немає";
-            if (code >= Schedule.OFF) {
-                s.detail = "Відключення до " + hm(runEnd(c, ni, Schedule.OFF, Schedule.SURE_OFF));
+            int soft = runEnd(c, ni, Schedule.PROBABLY, Schedule.SURE_OFF);
+            int hard = ni;
+            for (int k = ni; k < soft; k++) if (c[k] >= Schedule.OFF) hard = k + 1;
+            int end = hard > ni ? hard : soft;
+            if (end > ni) {
+                String u = until(now, today, end);
+                s.detail = (hard > ni ? "Має зʼявитися о " : "Має зʼявитися до ") + at(end) + " · через " + u;
+                if (hard > ni && soft > hard) s.detail += "\nМожливо пізніше — до " + at(soft);
+                s.shortDetail = "до " + hm(end) + " · " + u;
+                s.next.add(new int[]{ni, end, RED, 0});
+                from = end;
             } else {
-                s.detail = "Діє відключення черги " + a.gpvName;
+                s.detail = "Відключення черги " + a.gpvName + " триває\nЧас повернення невідомий";
+                s.shortDetail = "відключення триває";
+                s.next.add(new int[]{ni, -1, RED, 0});
+                from = ni + 1;
             }
-        } else if (code == Schedule.OFF) {
-            s.level = ORANGE;
-            s.title = "Ймовірно, світла немає";
-            s.detail = "Заплановане відключення до " + hm(runEnd(c, ni, Schedule.OFF, Schedule.SURE_OFF));
         } else if (code == Schedule.PROBABLY) {
             s.level = YELLOW;
             s.title = "Можливе відключення";
-            s.detail = "Світло може зникнути до " + hm(runEnd(c, ni, Schedule.PROBABLY, Schedule.PROBABLY));
+            int e = runEnd(c, ni, Schedule.PROBABLY, Schedule.PROBABLY);
+            String u = until(now, today, e);
+            s.detail = "До " + at(e) + " · ще " + u;
+            s.shortDetail = "до " + hm(e) + " · " + u;
         } else {
             s.level = GREEN;
             s.title = "Світло є";
             int j = ni + 1;
             while (j < 96 && c[j] >= 0 && c[j] < Schedule.OFF) j++;
+            int p = ni + 1;
+            while (p < 96 && c[p] == Schedule.ENABLE) p++;
             if (j < 96 && c[j] >= Schedule.OFF) {
-                s.detail = "Наступне відключення: " + range(j, runEnd(c, j, Schedule.OFF, Schedule.SURE_OFF));
+                s.detail = "Вимкнуть о " + at(j) + " · через " + until(now, today, j);
+                s.shortDetail = "вимкнуть о " + hm(j);
+            } else if (p < 96 && c[p] == Schedule.PROBABLY) {
+                s.detail = "Можливе відключення о " + at(p) + " · через " + until(now, today, p);
+                s.shortDetail = "можливе о " + hm(p);
             } else if (j < 96) {
                 s.detail = "Сьогодні відключень більше немає";
+                s.shortDetail = "сьогодні без відключень";
             } else {
                 s.detail = "Відключень за графіком немає";
+                s.shortDetail = "без відключень";
             }
+        }
+
+        int i = from;
+        while (i < 96 && c[i] >= 0 && s.next.size() < 6) {
+            int lvl = Timeline.level(c[i]);
+            int e = i;
+            while (e < 96 && c[e] >= 0 && Timeline.level(c[e]) == lvl) e++;
+            s.next.add(new int[]{i, e, lvl, 0});
+            i = e;
         }
         return s;
     }

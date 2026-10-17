@@ -152,6 +152,16 @@ final class Store {
         return s;
     }
 
+    /** Short version for the widget header: "11:17" or "немає звʼязку". */
+    String updatedShort() {
+        long f = fetchedAt();
+        if (f == 0) return "";
+        if (lastError() > f) return "немає звʼязку";
+        ZonedDateTime t = Instant.ofEpochMilli(f).atZone(Schedule.ZONE);
+        boolean today = t.toLocalDate().equals(LocalDate.now(Schedule.ZONE));
+        return t.format(DateTimeFormatter.ofPattern(today ? "HH:mm" : "dd.MM HH:mm"));
+    }
+
     // ---- notification memory ----
 
     JSONObject notifyState(long domId) {

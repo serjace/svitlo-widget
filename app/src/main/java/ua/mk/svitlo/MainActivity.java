@@ -1,12 +1,9 @@
 package ua.mk.svitlo;
 
 import android.Manifest;
-import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -15,32 +12,39 @@ import android.provider.Settings;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
-import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.CheckBox;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.Spinner;
 import android.widget.TextView;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.color.MaterialColors;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.divider.MaterialDivider;
+import com.google.android.material.materialswitch.MaterialSwitch;
 
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-public class MainActivity extends Activity {
+public class MainActivity extends AppCompatActivity {
     private static final int[] LEADS = {10, 15, 30, 60};
+    private static final int[] CHIPS = {R.id.chip_10, R.id.chip_15, R.id.chip_30, R.id.chip_60};
+    private static final int MAX_ROWS = 5;
 
-    private TextView mAddress, mDot, mStatus, mDetail, mTodayLabel, mTodayText,
-            mTomorrowLabel, mTomorrowText, mQueues, mUpdated, mBatteryHint;
-    private ImageView mTodayImg, mTomorrowImg;
+    private TextView mAddress, mStatus, mDetail, mTodayLabel, mNextLabel, mTomorrowLabel,
+            mTomorrowText, mQueues, mUpdated, mBatteryHint;
+    private ImageView mIcon;
+    private HourGridView mTodayGrid, mTomorrowGrid;
     private View mSchedule;
-    private LinearLayout addrList;
-    private Button btnRefresh, btnBattery;
+    private LinearLayout mNext, addrList;
+    private MaterialButton btnRefresh, btnBattery;
     private boolean refreshing;
 
     @Override
@@ -49,15 +53,16 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         mAddress = findViewById(R.id.m_address);
-        mDot = findViewById(R.id.m_dot);
+        mIcon = findViewById(R.id.m_icon);
         mStatus = findViewById(R.id.m_status);
         mDetail = findViewById(R.id.m_detail);
         mSchedule = findViewById(R.id.m_schedule);
         mTodayLabel = findViewById(R.id.m_today_label);
-        mTodayImg = findViewById(R.id.m_today_img);
-        mTodayText = findViewById(R.id.m_today_text);
+        mTodayGrid = findViewById(R.id.m_today_grid);
+        mNextLabel = findViewById(R.id.m_next_label);
+        mNext = findViewById(R.id.m_next);
         mTomorrowLabel = findViewById(R.id.m_tomorrow_label);
-        mTomorrowImg = findViewById(R.id.m_tomorrow_img);
+        mTomorrowGrid = findViewById(R.id.m_tomorrow_grid);
         mTomorrowText = findViewById(R.id.m_tomorrow_text);
         mQueues = findViewById(R.id.m_queues);
         mUpdated = findViewById(R.id.m_updated);
@@ -80,34 +85,25 @@ public class MainActivity extends Activity {
         btnBattery.setOnClickListener(v -> askBattery());
 
         Store st = new Store(this);
-        bindFlag(R.id.cb_before, Store.F_BEFORE, st);
-        bindFlag(R.id.cb_return, Store.F_RETURN, st);
-        bindFlag(R.id.cb_emergency, Store.F_EMERGENCY, st);
-        bindFlag(R.id.cb_schedule, Store.F_SCHEDULE, st);
+        bindSwitch(R.id.sw_before, Store.F_BEFORE, st);
+        bindSwitch(R.id.sw_return, Store.F_RETURN, st);
+        bindSwitch(R.id.sw_emergency, Store.F_EMERGENCY, st);
+        bindSwitch(R.id.sw_schedule, Store.F_SCHEDULE, st);
 
-        Spinner spLead = findViewById(R.id.sp_lead);
-        String[] labels = new String[LEADS.length];
-        int sel = 2;
-        for (int i = 0; i < LEADS.length; i++) {
-            labels[i] = LEADS[i] + " хв";
-            if (LEADS[i] == st.lead()) sel = i;
-        }
-        ArrayAdapter<String> ad = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, labels);
-        ad.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spLead.setAdapter(ad);
-        spLead.setSelection(sel);
-        spLead.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                Store s = new Store(MainActivity.this);
-                if (s.lead() != LEADS[position]) {
-                    s.setLead(LEADS[position]);
-                    runTick(false);
+        ChipGroup leads = findViewById(R.id.cg_lead);
+        int checked = R.id.chip_30;
+        for (int i = 0; i < LEADS.length; i++) if (LEADS[i] == st.lead()) checked = CHIPS[i];
+        leads.check(checked);
+        leads.setOnCheckedStateChangeListener((group, ids) -> {
+            if (ids.isEmpty()) return;
+            for (int i = 0; i < CHIPS.length; i++) {
+                if (CHIPS[i] == ids.get(0)) {
+                    Store s = new Store(this);
+                    if (s.lead() != LEADS[i]) {
+                        s.setLead(LEADS[i]);
+                        runTick();
+                    }
                 }
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
             }
         });
 
@@ -136,12 +132,12 @@ public class MainActivity extends Activity {
         Updater.setListener(null);
     }
 
-    private void bindFlag(int id, String key, Store st) {
-        CheckBox cb = findViewById(id);
-        cb.setChecked(st.flag(key));
-        cb.setOnCheckedChangeListener((b, checked) -> {
-            new Store(this).setFlag(key, checked);
-            runTick(false);
+    private void bindSwitch(int id, String key, Store st) {
+        MaterialSwitch sw = findViewById(id);
+        sw.setChecked(st.flag(key));
+        sw.setOnCheckedChangeListener((b, isChecked) -> {
+            new Store(this).setFlag(key, isChecked);
+            runTick();
         });
     }
 
@@ -160,8 +156,8 @@ public class MainActivity extends Activity {
         }).start();
     }
 
-    private void runTick(boolean fetch) {
-        new Thread(() -> Updater.tick(getApplicationContext(), fetch)).start();
+    private void runTick() {
+        new Thread(() -> Updater.tick(getApplicationContext(), false)).start();
     }
 
     private void render() {
@@ -172,7 +168,8 @@ public class MainActivity extends Activity {
         Status s = Status.compute(sch, a, now);
 
         mAddress.setText(a == null ? "Адресу ще не додано" : a.name);
-        mDot.setTextColor(Status.color(s.level));
+        mIcon.setBackgroundResource(Timeline.circleRes(s.level));
+        mIcon.setImageResource(Timeline.iconRes(s.level));
         mStatus.setText(s.title);
         mDetail.setText(s.detail);
 
@@ -184,19 +181,30 @@ public class MainActivity extends Activity {
 
             int[] t = a.gpvId > 0 ? sch.slots(today, a.gpvId) : null;
             if (t == null) t = new int[48];
-            mTodayLabel.setText("СЬОГОДНІ, " + today.format(f));
-            mTodayImg.setImageBitmap(Timeline.render(t, Status.nowFraction(now), false, 1000, 110));
-            mTodayText.setText(Status.describeDay(t));
+            mTodayLabel.setText("Сьогодні, " + today.format(f) + " — по годинах");
+            mTodayGrid.setData(t, now.getHour());
 
-            mTomorrowLabel.setText("ЗАВТРА, " + tomorrow.format(f));
+            mNext.removeAllViews();
+            LayoutInflater inf = getLayoutInflater();
+            for (int k = 0; k < s.next.size() && k < MAX_ROWS; k++) {
+                int[] r = s.next.get(k);
+                View row = inf.inflate(R.layout.item_period, mNext, false);
+                ((ImageView) row.findViewById(R.id.p_pill)).setImageResource(Timeline.pillRes(r[2]));
+                ((TextView) row.findViewById(R.id.p_time)).setText(Status.rowTime(r, s.nowIdx));
+                ((TextView) row.findViewById(R.id.p_label)).setText(Status.rowLabel(r));
+                mNext.addView(row);
+            }
+            mNextLabel.setVisibility(s.next.isEmpty() ? View.GONE : View.VISIBLE);
+
+            mTomorrowLabel.setText("Завтра, " + tomorrow.format(f));
             int[] m = null;
             if (sch.hasDay(tomorrow)) m = a.gpvId > 0 ? sch.slots(tomorrow, a.gpvId) : new int[48];
             if (m != null) {
-                mTomorrowImg.setVisibility(View.VISIBLE);
-                mTomorrowImg.setImageBitmap(Timeline.render(m, -1f, false, 1000, 110));
+                mTomorrowGrid.setVisibility(View.VISIBLE);
+                mTomorrowGrid.setData(m, -1);
                 mTomorrowText.setText(Status.describeDay(m));
             } else {
-                mTomorrowImg.setVisibility(View.GONE);
+                mTomorrowGrid.setVisibility(View.GONE);
                 mTomorrowText.setText("Графік на завтра ще не опубліковано");
             }
             mQueues.setText("Черги: " + a.queuesText() + "\n" + a.full);
@@ -213,64 +221,50 @@ public class MainActivity extends Activity {
         List<Address> list = st.addresses();
         if (list.isEmpty()) {
             TextView empty = new TextView(this);
-            empty.setText("Поки що немає адрес. Натисніть «+ Додати адресу».");
-            empty.setTextColor(getColor(R.color.text_muted));
-            empty.setPadding(dp(14), dp(14), dp(14), dp(14));
+            empty.setText("Додайте свою адресу, щоб бачити графік і отримувати сповіщення.");
+            empty.setTextColor(MaterialColors.getColor(addrList, com.google.android.material.R.attr.colorOnSurfaceVariant));
+            int p = dp(16);
+            empty.setPadding(p, p, p, p);
             addrList.addView(empty);
             return;
         }
+        LayoutInflater inf = getLayoutInflater();
         for (int i = 0; i < list.size(); i++) {
             Address a = list.get(i);
             boolean isActive = active != null && active.domId == a.domId;
-            if (i > 0) {
-                View div = new View(this);
-                div.setBackgroundColor(0xFFE3E7ED);
-                addrList.addView(div, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)));
-            }
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(dp(14), dp(10), dp(4), dp(10));
+            if (i > 0) addrList.addView(new MaterialDivider(this));
 
-            TextView tv = new TextView(this);
-            tv.setText((isActive ? "● " : "○ ") + a.name + "\n" + a.full + "\n" + a.queuesText());
-            tv.setTextSize(14);
-            tv.setTextColor(getColor(R.color.text_main));
-            if (isActive) tv.setTypeface(null, Typeface.BOLD);
-            row.addView(tv, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            View row = inf.inflate(R.layout.item_address, addrList, false);
+            row.findViewById(R.id.a_check).setVisibility(isActive ? View.VISIBLE : View.INVISIBLE);
+            ((TextView) row.findViewById(R.id.a_title)).setText(a.name);
+            ((TextView) row.findViewById(R.id.a_sub)).setText(a.full + "\n" + a.queuesText());
 
-            CheckBox bell = new CheckBox(this);
-            bell.setText("🔔");
+            MaterialSwitch bell = row.findViewById(R.id.a_notify);
             bell.setChecked(a.notify);
-            bell.setOnCheckedChangeListener((b, checked) -> {
+            bell.setOnCheckedChangeListener((b, isChecked) -> {
                 Store s = new Store(this);
                 List<Address> all = s.addresses();
-                for (Address x : all) if (x.domId == a.domId) x.notify = checked;
+                for (Address x : all) if (x.domId == a.domId) x.notify = isChecked;
                 s.saveAddresses(all);
-                runTick(false);
+                runTick();
             });
-            row.addView(bell);
 
-            TextView del = new TextView(this);
-            del.setText("✕");
-            del.setTextSize(20);
-            del.setTextColor(getColor(R.color.text_muted));
-            del.setPadding(dp(14), dp(8), dp(14), dp(8));
-            del.setOnClickListener(v -> new AlertDialog.Builder(this)
-                    .setMessage("Видалити адресу «" + a.name + "»?")
+            ImageButton del = row.findViewById(R.id.a_delete);
+            del.setOnClickListener(v -> new MaterialAlertDialogBuilder(this)
+                    .setTitle("Видалити адресу?")
+                    .setMessage(a.name + "\n" + a.full)
                     .setPositiveButton("Видалити", (d, w) -> {
                         new Store(this).removeAddress(a.domId);
                         render();
-                        runTick(false);
+                        runTick();
                     })
                     .setNegativeButton("Скасувати", null)
                     .show());
-            row.addView(del);
 
             row.setOnClickListener(v -> {
                 new Store(this).setActiveDom(a.domId);
                 render();
-                runTick(false);
+                runTick();
             });
             addrList.addView(row);
         }
@@ -278,28 +272,25 @@ public class MainActivity extends Activity {
 
     private CharSequence legend() {
         SpannableStringBuilder b = new SpannableStringBuilder();
-        addLegend(b, Schedule.ENABLE, "є світло");
-        addLegend(b, Schedule.PROBABLY, "можливе");
-        addLegend(b, Schedule.OFF, "заплановане");
-        addLegend(b, Schedule.SURE_OFF, "актуальне відключення");
+        addLegend(b, Timeline.ON);
+        addLegend(b, Timeline.MAYBE);
+        addLegend(b, Timeline.OFF);
         return b;
     }
 
-    private void addLegend(SpannableStringBuilder b, int code, String text) {
+    private void addLegend(SpannableStringBuilder b, int lvl) {
         int start = b.length();
         b.append("■ ");
-        b.setSpan(new ForegroundColorSpan(Status.cellColor(code)), start, start + 1,
+        b.setSpan(new ForegroundColorSpan(getColor(Timeline.strongColor(lvl))), start, start + 1,
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        b.append(text).append("   ");
-        b.setSpan(new ForegroundColorSpan(getColor(R.color.text_muted)), start + 2, b.length(),
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        b.append(Timeline.name(lvl).toLowerCase()).append("    ");
     }
 
     private void updateBatteryButton() {
         PowerManager pm = getSystemService(PowerManager.class);
         boolean ok = pm != null && pm.isIgnoringBatteryOptimizations(getPackageName());
         btnBattery.setVisibility(ok ? View.GONE : View.VISIBLE);
-        mBatteryHint.setText(ok ? "✓ Роботу у фоні дозволено"
+        mBatteryHint.setText(ok ? "✓ Роботу у фоні дозволено — сповіщення приходитимуть вчасно."
                 : "Щоб сповіщення приходили вчасно, дозвольте застосунку працювати у фоні.");
     }
 
