@@ -51,33 +51,51 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- "Дім / Робота" buttons: stay in place, only the selection moves when swiping.
-         Centred; with many addresses they become a row you can scroll sideways. -->
-    <HorizontalScrollView
-        android:id="@+id/main_chips_scroll"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="4dp"
-        android:clipToPadding="false"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:scrollbars="none"
-        android:visibility="gone">
-
-        <com.google.android.material.chip.ChipGroup
-            android:id="@+id/main_chips"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:selectionRequired="true"
-            app:singleLine="true"
-            app:singleSelection="true" />
-    </HorizontalScrollView>
-
-    <!-- One page per address; swipe left/right -->
-    <androidx.viewpager2.widget.ViewPager2
-        android:id="@+id/pager"
+    <!-- The address buttons scroll away with the page (and come back when scrolling up);
+         when swiping between addresses they stay in place and only the selection moves. -->
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1">
+
+        <com.google.android.material.appbar.AppBarLayout
+            android:id="@+id/main_appbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            android:stateListAnimator="@null"
+            app:elevation="0dp"
+            app:liftOnScroll="false">
+
+            <!-- Centred; with many addresses they become a row you can scroll sideways -->
+            <HorizontalScrollView
+                android:id="@+id/main_chips_scroll"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:clipToPadding="false"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="4dp"
+                android:scrollbars="none"
+                android:visibility="gone"
+                app:layout_scrollFlags="scroll|enterAlways|snap">
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/main_chips"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:selectionRequired="true"
+                    app:singleLine="true"
+                    app:singleSelection="true" />
+            </HorizontalScrollView>
+        </com.google.android.material.appbar.AppBarLayout>
+
+        <!-- One page per address; swipe left/right -->
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/pager"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
 </LinearLayout>

@@ -22,6 +22,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
+import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
@@ -52,6 +53,7 @@ public class MainActivity extends AppCompatActivity {
     private ViewPager2 pager;
     private ChipGroup chips;
     private HorizontalScrollView chipsScroll;
+    private AppBarLayout appBar;
     private final List<Integer> chipIds = new ArrayList<>();
     private String chipsKey;
     private int navInset;   // space to keep free at the bottom for the (transparent) gesture bar
@@ -81,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
         Bars.smoothPager(pager);
         chips = findViewById(R.id.main_chips);
         chipsScroll = findViewById(R.id.main_chips_scroll);
+        appBar = findViewById(R.id.main_appbar);
         pager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageScrollStateChanged(int state) {
@@ -92,6 +95,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPageSelected(int position) {
                 checkChip(position);
+                appBar.setExpanded(true, true);   // the new page starts at the top, buttons visible
                 if (ignorePageEvents || position >= list.size()) return;
                 Address x = list.get(position);
                 Store st = new Store(MainActivity.this);
@@ -400,7 +404,8 @@ public class MainActivity extends AppCompatActivity {
 
             // Which address
             if (a != null) {
-                addrBox.setVisibility(View.VISIBLE);
+                // with several addresses the selected button already shows the name
+                addrBox.setVisibility(list.size() > 1 ? View.GONE : View.VISIBLE);
                 addrName.setText(a.name);
                 String q = a.gpvId > 0 ? " · черга " + a.gpvName : "";
                 addrFull.setText(a.full + q);
