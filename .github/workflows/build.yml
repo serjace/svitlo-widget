@@ -1,0 +1,50 @@
+name: Build APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Find signing key name
+        run: |
+          keytool -list -keystore keystore/release.p12 -storetype PKCS12 -storepass svitlo-widget
+          ALIAS=$(keytool -list -keystore keystore/release.p12 -storetype PKCS12 -storepass svitlo-widget | grep PrivateKeyEntry | head -1 | cut -d, -f1)
+          echo "Key alias: $ALIAS"
+          echo "KEY_ALIAS=$ALIAS" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Prepare file
+        run: cp app/build/outputs/apk/release/app-release.apk svitlo.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: svitlo-apk
+          path: svitlo.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Світло v1.0.${{ github.run_number }}
+          body: Завантажте svitlo.apk на телефон і встановіть.
+          files: svitlo.apk
+          make_latest: true
