@@ -41,8 +41,8 @@ final class Updater {
         Context app = ctx.getApplicationContext();
         synchronized (LOCK) {
             Store st = new Store(app);
-            if (fetch && fetchAll(st) && System.currentTimeMillis() - st.updateCheckedAt() > 3 * 3600 * 1000L) {
-                AppUpdate.check(app, st);   // new version of the app on GitHub? (every 3 hours)
+            if (fetch && fetchAll(st) && System.currentTimeMillis() - st.updateCheckedAt() > 3600 * 1000L) {
+                AppUpdate.check(app, st);   // new version of the app on GitHub? (every hour)
             }
             Schedule sch = Schedule.load(st);
             ZonedDateTime now = ZonedDateTime.now(Schedule.ZONE);

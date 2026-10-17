@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Bundle;
 import android.view.View;
 import android.widget.RemoteViews;
 
@@ -31,6 +32,13 @@ public class PowerWidget extends AppWidgetProvider {
         for (int id : ids) mgr.updateAppWidget(id, build(ctx, st, sch, now, id, small(), false));
         Updater.ensurePeriodic(ctx);
         if (System.currentTimeMillis() - st.fetchedAt() > 10 * 60 * 1000L) Updater.requestFetch(ctx);
+    }
+
+    /** The widget was resized: redraw it to fit the new size. */
+    @Override
+    public void onAppWidgetOptionsChanged(Context ctx, AppWidgetManager mgr, int id, Bundle options) {
+        Store st = new Store(ctx);
+        mgr.updateAppWidget(id, build(ctx, st, Schedule.load(st), ZonedDateTime.now(Schedule.ZONE), id, small(), false));
     }
 
     @Override
@@ -113,9 +121,13 @@ public class PowerWidget extends AppWidgetProvider {
         v.setTextColor(R.id.w_updated, soft(on, 0xCC));
         v.setTextViewText(R.id.w_detail, s.detail);
 
+        // Show as many period rows as the widget's real height allows (launchers differ a lot)
+        int height = AppWidgetManager.getInstance(ctx).getAppWidgetOptions(id)
+                .getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0);
+        int rows = height == 0 || height >= 158 ? 2 : height >= 134 ? 1 : 0;
         List<int[]> up = s.upcoming(ROWS.length);
         for (int k = 0; k < ROWS.length; k++) {
-            if (k < up.size()) {
+            if (k < up.size() && k < rows) {
                 int[] r = up.get(k);
                 v.setViewVisibility(ROWS[k], View.VISIBLE);
                 v.setTextViewText(ROWS[k], Status.rowTime(r, s.nowIdx) + "  " + Status.rowLabel(r).toLowerCase());

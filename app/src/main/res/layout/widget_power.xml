@@ -1,18 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Text sizes are in dp with auto-shrink, so long words like "Можливе відключення"
+     always fit, on any phone, launcher and font setting. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/w_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/wbg_on"
     android:orientation="vertical"
-    android:paddingStart="18dp"
-    android:paddingTop="6dp"
-    android:paddingEnd="8dp"
-    android:paddingBottom="12dp">
+    android:paddingStart="16dp"
+    android:paddingTop="4dp"
+    android:paddingEnd="6dp"
+    android:paddingBottom="10dp">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="32dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
@@ -25,7 +27,7 @@
             android:maxLines="1"
             android:text="Дім · черга 3.2"
             android:textColor="#E6FFFFFF"
-            android:textSize="14sp" />
+            android:textSize="14dp" />
 
         <TextView
             android:id="@+id/w_updated"
@@ -35,85 +37,97 @@
             android:maxLines="1"
             android:text="13:15"
             android:textColor="#CCFFFFFF"
-            android:textSize="13sp" />
+            android:textSize="13dp" />
 
         <ImageView
             android:id="@+id/w_switch"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="34dp"
+            android:layout_height="32dp"
             android:contentDescription="Інша адреса"
-            android:padding="7dp"
+            android:padding="6dp"
             android:src="@drawable/ic_swap" />
 
         <ImageView
             android:id="@+id/w_refresh"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="34dp"
+            android:layout_height="32dp"
             android:contentDescription="Оновити"
-            android:padding="7dp"
+            android:padding="6dp"
             android:src="@drawable/ic_refresh" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="36dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingEnd="10dp">
 
         <ImageView
             android:id="@+id/w_icon"
-            android:layout_width="34dp"
-            android:layout_height="34dp"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
             android:contentDescription="@null"
             android:src="@drawable/ic_status_on" />
 
         <TextView
             android:id="@+id/w_status"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
             android:layout_marginStart="8dp"
-            android:ellipsize="end"
+            android:layout_weight="1"
+            android:autoSizeMaxTextSize="26dp"
+            android:autoSizeMinTextSize="14dp"
+            android:autoSizeStepGranularity="1dp"
+            android:autoSizeTextType="uniform"
             android:fontFamily="sans-serif-medium"
+            android:gravity="center_vertical"
             android:maxLines="1"
             android:text="Світло є"
-            android:textColor="#FFFFFFFF"
-            android:textSize="26sp" />
+            android:textColor="#FFFFFFFF" />
     </LinearLayout>
 
     <TextView
         android:id="@+id/w_detail"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:ellipsize="end"
+        android:layout_height="26dp"
+        android:autoSizeMaxTextSize="18dp"
+        android:autoSizeMinTextSize="12dp"
+        android:autoSizeStepGranularity="1dp"
+        android:autoSizeTextType="uniform"
         android:fontFamily="sans-serif-medium"
+        android:gravity="center_vertical"
         android:maxLines="1"
         android:paddingEnd="10dp"
         android:text="Вимкнуть о 14:00 · через 40 хв"
-        android:textColor="#FFFFFFFF"
-        android:textSize="18sp" />
+        android:textColor="#FFFFFFFF" />
 
     <TextView
         android:id="@+id/w_row1"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:ellipsize="end"
+        android:layout_height="22dp"
+        android:layout_marginTop="4dp"
+        android:autoSizeMaxTextSize="16dp"
+        android:autoSizeMinTextSize="11dp"
+        android:autoSizeStepGranularity="1dp"
+        android:autoSizeTextType="uniform"
+        android:gravity="center_vertical"
         android:maxLines="1"
         android:paddingEnd="10dp"
-        android:text="14:00–16:00 світла немає"
-        android:textColor="#F2FFFFFF"
-        android:textSize="16sp" />
+        android:text="14:00–16:00  світла немає"
+        android:textColor="#F2FFFFFF" />
 
     <TextView
         android:id="@+id/w_row2"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:ellipsize="end"
+        android:layout_height="22dp"
+        android:autoSizeMaxTextSize="16dp"
+        android:autoSizeMinTextSize="11dp"
+        android:autoSizeStepGranularity="1dp"
+        android:autoSizeTextType="uniform"
+        android:gravity="center_vertical"
         android:maxLines="1"
         android:paddingEnd="10dp"
-        android:text="16:00–16:30 можливе відключення"
-        android:textColor="#F2FFFFFF"
-        android:textSize="16sp" />
+        android:text="16:00–16:30  можливе відключення"
+        android:textColor="#F2FFFFFF" />
 </LinearLayout>

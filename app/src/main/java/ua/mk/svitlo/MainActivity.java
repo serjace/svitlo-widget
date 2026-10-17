@@ -10,12 +10,16 @@ import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
@@ -26,48 +30,53 @@ import com.google.android.material.chip.ChipGroup;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
-/** The main screen: only what matters, in big letters. Settings live in SettingsActivity. */
+/**
+ * The main screen: one page per address, swipe left/right between them.
+ * Only what matters, in big letters. Settings live in SettingsActivity.
+ */
 public class MainActivity extends AppCompatActivity {
     private static final int MAX_ROWS = 4;
 
-    private View addrScroll, cardNext, cardToday, cardTomorrow, cardUpdate, btnAddFirst;
+    private View switcher, cardUpdate;
     private ChipGroup cgAddresses;
-    private MaterialCardView cardHero;
-    private ImageView hIcon;
-    private TextView hTitle, hLine1, hLine2, mTodayLabel, mTomorrowLabel, mTomorrowText, mQueues, mUpdated;
-    private LinearLayout mNext;
-    private HourGridView mTodayGrid, mTomorrowGrid;
-    private MaterialButton btnRefresh;
+    private ViewPager2 pager;
+    private final PagesAdapter adapter = new PagesAdapter();
     private boolean refreshing;
+    private boolean ignorePageEvents;
+
+    // data shared by all pages, refreshed in render()
+    private List<Address> list = new ArrayList<>();
+    private Schedule sch;
+    private ZonedDateTime now;
+    private String updated = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        addrScroll = findViewById(R.id.addr_scroll);
+        switcher = findViewById(R.id.switcher);
         cgAddresses = findViewById(R.id.cg_addresses);
         cardUpdate = findViewById(R.id.card_update);
-        cardHero = findViewById(R.id.card_hero);
-        hIcon = findViewById(R.id.h_icon);
-        hTitle = findViewById(R.id.h_title);
-        hLine1 = findViewById(R.id.h_line1);
-        hLine2 = findViewById(R.id.h_line2);
-        btnAddFirst = findViewById(R.id.btn_add_first);
-        cardNext = findViewById(R.id.card_next);
-        mNext = findViewById(R.id.m_next);
-        cardToday = findViewById(R.id.card_today);
-        mTodayLabel = findViewById(R.id.m_today_label);
-        mTodayGrid = findViewById(R.id.m_today_grid);
-        cardTomorrow = findViewById(R.id.card_tomorrow);
-        mTomorrowLabel = findViewById(R.id.m_tomorrow_label);
-        mTomorrowText = findViewById(R.id.m_tomorrow_text);
-        mTomorrowGrid = findViewById(R.id.m_tomorrow_grid);
-        mQueues = findViewById(R.id.m_queues);
-        mUpdated = findViewById(R.id.m_updated);
-        btnRefresh = findViewById(R.id.btn_refresh);
+        pager = findViewById(R.id.pager);
+        pager.setAdapter(adapter);
+        pager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+            @Override
+            public void onPageSelected(int position) {
+                if (ignorePageEvents || position >= list.size()) return;
+                Address x = list.get(position);
+                Store st = new Store(MainActivity.this);
+                Address cur = st.active();
+                if (cur == null || cur.domId != x.domId) {
+                    st.setActiveDom(x.domId);
+                    checkChip(position);
+                    runTick();
+                }
+            }
+        });
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setOnMenuItemClickListener(item -> {
@@ -82,9 +91,6 @@ public class MainActivity extends AppCompatActivity {
             return false;
         });
 
-        ((TextView) findViewById(R.id.m_legend)).setText(legend());
-        btnRefresh.setOnClickListener(v -> refresh());
-        btnAddFirst.setOnClickListener(v -> startActivity(new Intent(this, AddAddressActivity.class)));
         findViewById(R.id.btn_update).setOnClickListener(v -> {
             AppUpdate.download(getApplicationContext());
             cardUpdate.setVisibility(View.GONE);
@@ -108,7 +114,8 @@ public class MainActivity extends AppCompatActivity {
         if (!st.addresses().isEmpty() && System.currentTimeMillis() - st.fetchedAt() > 5 * 60 * 1000L) {
             refresh();
         }
-        if (System.currentTimeMillis() - st.updateCheckedAt() > 30 * 60 * 1000L) {
+        // look for a new app version every time the app is opened
+        if (System.currentTimeMillis() - st.updateCheckedAt() > 2 * 60 * 1000L) {
             new Thread(() -> {
                 AppUpdate.check(getApplicationContext(), new Store(getApplicationContext()));
                 runOnUiThread(this::renderUpdate);
@@ -122,16 +129,14 @@ public class MainActivity extends AppCompatActivity {
         Updater.setListener(null);
     }
 
-    private void refresh() {
+    void refresh() {
         if (refreshing) return;
         refreshing = true;
-        btnRefresh.setEnabled(false);
-        mUpdated.setText("Оновлення…");
+        adapter.notifyDataSetChanged();
         new Thread(() -> {
             Updater.tick(getApplicationContext(), true);
             runOnUiThread(() -> {
                 refreshing = false;
-                btnRefresh.setEnabled(true);
                 render();
             });
         }).start();
@@ -143,101 +148,51 @@ public class MainActivity extends AppCompatActivity {
 
     private void render() {
         Store st = new Store(this);
-        Schedule sch = Schedule.load(st);
-        ZonedDateTime now = ZonedDateTime.now(Schedule.ZONE);
-        List<Address> list = st.addresses();
-        Address a = st.active();
-        Status s = Status.compute(sch, a, now);
+        sch = Schedule.load(st);
+        now = ZonedDateTime.now(Schedule.ZONE);
+        list = st.addresses();
+        updated = st.updatedLabel();
+        Address active = st.active();
+        int idx = 0;
+        for (int i = 0; i < list.size(); i++) if (active != null && list.get(i).domId == active.domId) idx = i;
 
-        renderSwitcher(list, a);
+        ignorePageEvents = true;
+        adapter.notifyDataSetChanged();
+        if (pager.getCurrentItem() != idx) pager.setCurrentItem(idx, false);
+        pager.post(() -> ignorePageEvents = false);
 
-        // Big status card in the status colour
-        int fill = getColor(Timeline.containerColor(s.level));
-        int on = getColor(Timeline.contentColor(s.level));
-        cardHero.setCardBackgroundColor(fill);
-        hIcon.setImageResource(Timeline.iconRes(s.level));
-        hTitle.setText(s.title);
-        hTitle.setTextColor(on);
-        hLine1.setText(s.line1);
-        hLine1.setTextColor(on);
-        hLine1.setVisibility(s.line1.isEmpty() ? View.GONE : View.VISIBLE);
-        hLine2.setText(s.line2);
-        hLine2.setTextColor(on);
-        hLine2.setVisibility(s.line2.isEmpty() ? View.GONE : View.VISIBLE);
-        btnAddFirst.setVisibility(a == null ? View.VISIBLE : View.GONE);
-
-        boolean show = a != null && sch.hasData;
-        if (show) {
-            LocalDate today = now.toLocalDate();
-            LocalDate tomorrow = today.plusDays(1);
-            DateTimeFormatter f = DateTimeFormatter.ofPattern("dd.MM");
-
-            // Coming hours
-            mNext.removeAllViews();
-            LayoutInflater inf = getLayoutInflater();
-            List<int[]> up = s.upcoming(MAX_ROWS);
-            for (int[] r : up) {
-                View row = inf.inflate(R.layout.item_period, mNext, false);
-                row.findViewById(R.id.p_pill).setBackgroundResource(Timeline.pillRes(r[2]));
-                ((TextView) row.findViewById(R.id.p_time)).setText(Status.rowTime(r, s.nowIdx).replace("–", " – "));
-                ((TextView) row.findViewById(R.id.p_label)).setText(Status.rowLabel(r));
-                mNext.addView(row);
-            }
-            cardNext.setVisibility(up.isEmpty() ? View.GONE : View.VISIBLE);
-
-            // Today
-            int[] t = a.gpvId > 0 ? sch.slots(today, a.gpvId) : null;
-            if (t == null) t = new int[48];
-            mTodayLabel.setText("Сьогодні, " + today.format(f));
-            mTodayGrid.setData(t, now.getHour());
-            cardToday.setVisibility(View.VISIBLE);
-
-            // Tomorrow
-            mTomorrowLabel.setText("Завтра, " + tomorrow.format(f));
-            int[] m = null;
-            if (sch.hasDay(tomorrow)) m = a.gpvId > 0 ? sch.slots(tomorrow, a.gpvId) : new int[48];
-            if (m != null) {
-                mTomorrowText.setText(Status.daySummary(m));
-                mTomorrowGrid.setVisibility(View.VISIBLE);
-                mTomorrowGrid.setData(m, -1);
-            } else {
-                mTomorrowText.setText("Графік ще не опубліковано");
-                mTomorrowGrid.setVisibility(View.GONE);
-            }
-            cardTomorrow.setVisibility(View.VISIBLE);
-
-            mQueues.setText(a.full + "\n" + a.queuesText());
-            mQueues.setVisibility(View.VISIBLE);
-        } else {
-            cardNext.setVisibility(View.GONE);
-            cardToday.setVisibility(View.GONE);
-            cardTomorrow.setVisibility(View.GONE);
-            mQueues.setVisibility(View.GONE);
-        }
-        if (!refreshing) mUpdated.setText(st.updatedLabel());
+        renderSwitcher(idx);
         renderUpdate();
     }
 
-    /** Big "Дім / Батьки" buttons on top when there are several addresses. */
-    private void renderSwitcher(List<Address> list, Address active) {
+    /** Big "Дім / Робота" buttons on top when there are several addresses. Long press = rename. */
+    private void renderSwitcher(int activeIdx) {
         cgAddresses.removeAllViews();
         if (list.size() < 2) {
-            addrScroll.setVisibility(View.GONE);
+            switcher.setVisibility(View.GONE);
             return;
         }
-        addrScroll.setVisibility(View.VISIBLE);
+        switcher.setVisibility(View.VISIBLE);
         LayoutInflater inf = getLayoutInflater();
-        for (Address x : list) {
+        for (int i = 0; i < list.size(); i++) {
+            final int pos = i;
+            Address x = list.get(i);
             Chip chip = (Chip) inf.inflate(R.layout.chip_address, cgAddresses, false);
             chip.setId(View.generateViewId());
             chip.setText(x.name);
             cgAddresses.addView(chip);
-            if (active != null && active.domId == x.domId) cgAddresses.check(chip.getId());
-            chip.setOnClickListener(v -> {
-                new Store(this).setActiveDom(x.domId);
-                render();
-                runTick();
+            if (i == activeIdx) cgAddresses.check(chip.getId());
+            chip.setOnClickListener(v -> pager.setCurrentItem(pos, true));
+            chip.setOnLongClickListener(v -> {
+                SettingsActivity.rename(this, x.domId, this::render);
+                return true;
             });
+        }
+    }
+
+    private void checkChip(int position) {
+        if (position < cgAddresses.getChildCount()) {
+            cgAddresses.check(cgAddresses.getChildAt(position).getId());
         }
     }
 
@@ -265,5 +220,137 @@ public class MainActivity extends AppCompatActivity {
         b.append("■ ");
         b.setSpan(new ForegroundColorSpan(color), start, start + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         b.append(text).append("    ");
+    }
+
+    // ---- pages ----
+
+    private class PagesAdapter extends RecyclerView.Adapter<Page> {
+        @NonNull
+        @Override
+        public Page onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            return new Page(getLayoutInflater().inflate(R.layout.page_address, parent, false));
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull Page holder, int position) {
+            holder.bind(position < list.size() ? list.get(position) : null);
+        }
+
+        @Override
+        public int getItemCount() {
+            return Math.max(1, list.size());   // one "add an address" page when there are none
+        }
+    }
+
+    private class Page extends RecyclerView.ViewHolder {
+        final View addrBox, cardNext, cardToday, cardTomorrow, btnAddFirst;
+        final TextView addrName, addrFull, hTitle, hLine1, hLine2, mTodayLabel, mTomorrowLabel,
+                mTomorrowText, mUpdated;
+        final MaterialCardView cardHero;
+        final ImageView hIcon;
+        final LinearLayout mNext;
+        final HourGridView mTodayGrid, mTomorrowGrid;
+        final MaterialButton btnRefresh;
+
+        Page(View v) {
+            super(v);
+            addrBox = v.findViewById(R.id.p_addr_box);
+            addrName = v.findViewById(R.id.p_addr_name);
+            addrFull = v.findViewById(R.id.p_addr_full);
+            cardHero = v.findViewById(R.id.card_hero);
+            hIcon = v.findViewById(R.id.h_icon);
+            hTitle = v.findViewById(R.id.h_title);
+            hLine1 = v.findViewById(R.id.h_line1);
+            hLine2 = v.findViewById(R.id.h_line2);
+            btnAddFirst = v.findViewById(R.id.btn_add_first);
+            cardNext = v.findViewById(R.id.card_next);
+            mNext = v.findViewById(R.id.m_next);
+            cardToday = v.findViewById(R.id.card_today);
+            mTodayLabel = v.findViewById(R.id.m_today_label);
+            mTodayGrid = v.findViewById(R.id.m_today_grid);
+            cardTomorrow = v.findViewById(R.id.card_tomorrow);
+            mTomorrowLabel = v.findViewById(R.id.m_tomorrow_label);
+            mTomorrowText = v.findViewById(R.id.m_tomorrow_text);
+            mTomorrowGrid = v.findViewById(R.id.m_tomorrow_grid);
+            mUpdated = v.findViewById(R.id.m_updated);
+            btnRefresh = v.findViewById(R.id.btn_refresh);
+            ((TextView) v.findViewById(R.id.m_legend)).setText(legend());
+            btnRefresh.setOnClickListener(x -> refresh());
+            btnAddFirst.setOnClickListener(x ->
+                    startActivity(new Intent(MainActivity.this, AddAddressActivity.class)));
+        }
+
+        void bind(Address a) {
+            if (sch == null) return;
+            Status s = Status.compute(sch, a, now);
+
+            // Which address
+            if (a != null) {
+                addrBox.setVisibility(View.VISIBLE);
+                addrName.setText(a.name);
+                String q = a.gpvId > 0 ? " · черга " + a.gpvName : "";
+                addrFull.setText(a.full + q);
+                addrFull.setVisibility(View.VISIBLE);
+            } else {
+                addrBox.setVisibility(View.GONE);
+                addrFull.setVisibility(View.GONE);
+            }
+
+            // Big status card in the status colour
+            int on = getColor(Timeline.contentColor(s.level));
+            cardHero.setCardBackgroundColor(getColor(Timeline.containerColor(s.level)));
+            hIcon.setImageResource(Timeline.iconRes(s.level));
+            hTitle.setText(s.title);
+            hTitle.setTextColor(on);
+            hLine1.setText(s.line1);
+            hLine1.setTextColor(on);
+            hLine1.setVisibility(s.line1.isEmpty() ? View.GONE : View.VISIBLE);
+            hLine2.setText(s.line2);
+            hLine2.setTextColor(on);
+            hLine2.setVisibility(s.line2.isEmpty() ? View.GONE : View.VISIBLE);
+            btnAddFirst.setVisibility(a == null ? View.VISIBLE : View.GONE);
+
+            boolean show = a != null && sch.hasData;
+            cardNext.setVisibility(View.GONE);
+            cardToday.setVisibility(show ? View.VISIBLE : View.GONE);
+            cardTomorrow.setVisibility(show ? View.VISIBLE : View.GONE);
+            if (show) {
+                LocalDate today = now.toLocalDate();
+                LocalDate tomorrow = today.plusDays(1);
+                DateTimeFormatter f = DateTimeFormatter.ofPattern("dd.MM");
+
+                mNext.removeAllViews();
+                LayoutInflater inf = getLayoutInflater();
+                List<int[]> up = s.upcoming(MAX_ROWS);
+                for (int[] r : up) {
+                    View row = inf.inflate(R.layout.item_period, mNext, false);
+                    row.findViewById(R.id.p_pill).setBackgroundResource(Timeline.pillRes(r[2]));
+                    ((TextView) row.findViewById(R.id.p_time)).setText(Status.rowTime(r, s.nowIdx).replace("–", " – "));
+                    ((TextView) row.findViewById(R.id.p_label)).setText(Status.rowLabel(r));
+                    mNext.addView(row);
+                }
+                cardNext.setVisibility(up.isEmpty() ? View.GONE : View.VISIBLE);
+
+                int[] t = a.gpvId > 0 ? sch.slots(today, a.gpvId) : null;
+                if (t == null) t = new int[48];
+                mTodayLabel.setText("Сьогодні, " + today.format(f));
+                mTodayGrid.setData(t, now.getHour());
+
+                mTomorrowLabel.setText("Завтра, " + tomorrow.format(f));
+                int[] m = null;
+                if (sch.hasDay(tomorrow)) m = a.gpvId > 0 ? sch.slots(tomorrow, a.gpvId) : new int[48];
+                if (m != null) {
+                    mTomorrowText.setText(Status.daySummary(m));
+                    mTomorrowGrid.setVisibility(View.VISIBLE);
+                    mTomorrowGrid.setData(m, -1);
+                } else {
+                    mTomorrowText.setText("Графік ще не опубліковано");
+                    mTomorrowGrid.setVisibility(View.GONE);
+                }
+            }
+            mUpdated.setText(refreshing ? "Оновлення…" : updated);
+            btnRefresh.setEnabled(!refreshing);
+            btnRefresh.setVisibility(a == null ? View.GONE : View.VISIBLE);
+        }
     }
 }

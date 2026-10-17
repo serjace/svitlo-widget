@@ -105,21 +105,21 @@ final class Store {
         p.edit().putBoolean(key, v).apply();
     }
 
+    /** Minutes before an outage to warn: 10, 15 or 30. */
     int lead() {
-        return p.getInt("lead", 30);
+        return Math.min(p.getInt("lead", 30), 30);
     }
 
     void setLead(int minutes) {
         p.edit().putInt("lead", minutes).apply();
     }
 
-    /** How often to download fresh data, in minutes. */
+    /**
+     * How often to download fresh data while the screen is on, in minutes. Fixed at 10:
+     * these checks never wake a sleeping phone, so they cost almost no battery.
+     */
     int interval() {
-        return p.getInt("interval", 10);
-    }
-
-    void setInterval(int minutes) {
-        p.edit().putInt("interval", minutes).apply();
+        return 10;
     }
 
     // ---- app updates ----

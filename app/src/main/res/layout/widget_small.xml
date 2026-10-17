@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Square widget. Text sizes are in dp with auto-shrink so everything fits. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/w_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/wbg_on"
-    android:padding="16dp">
+    android:padding="14dp">
 
     <ImageView
         android:id="@+id/w_icon"
-        android:layout_width="38dp"
-        android:layout_height="38dp"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
         android:layout_gravity="top|start"
         android:contentDescription="@null"
         android:src="@drawable/ic_status_on" />
@@ -23,24 +24,28 @@
         <TextView
             android:id="@+id/w_status"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:ellipsize="end"
+            android:layout_height="56dp"
+            android:autoSizeMaxTextSize="22dp"
+            android:autoSizeMinTextSize="13dp"
+            android:autoSizeStepGranularity="1dp"
+            android:autoSizeTextType="uniform"
             android:fontFamily="sans-serif-medium"
-            android:lineSpacingMultiplier="0.95"
+            android:gravity="bottom|start"
             android:maxLines="2"
             android:text="Світло є"
-            android:textColor="#FFFFFFFF"
-            android:textSize="22sp" />
+            android:textColor="#FFFFFFFF" />
 
         <TextView
             android:id="@+id/w_detail"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:ellipsize="end"
+            android:layout_height="24dp"
+            android:autoSizeMaxTextSize="18dp"
+            android:autoSizeMinTextSize="12dp"
+            android:autoSizeStepGranularity="1dp"
+            android:autoSizeTextType="uniform"
+            android:gravity="center_vertical|start"
             android:maxLines="1"
             android:text="до 14:00"
-            android:textColor="#FFFFFFFF"
-            android:textSize="18sp" />
+            android:textColor="#FFFFFFFF" />
     </LinearLayout>
 </FrameLayout>

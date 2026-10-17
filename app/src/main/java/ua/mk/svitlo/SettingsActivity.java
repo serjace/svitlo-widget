@@ -1,7 +1,9 @@
 package ua.mk.svitlo;
 
 import android.content.ActivityNotFoundException;
+import android.content.ComponentName;
 import android.content.Context;
+import android.os.Build;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -22,15 +24,14 @@ import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.divider.MaterialDivider;
 import com.google.android.material.materialswitch.MaterialSwitch;
+import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.List;
 
 /** Everything that isn't needed every day: addresses, notifications, sharing, widget help. */
 public class SettingsActivity extends AppCompatActivity {
-    private static final int[] LEADS = {10, 15, 30, 60};
-    private static final int[] CHIPS = {R.id.chip_10, R.id.chip_15, R.id.chip_30, R.id.chip_60};
-    private static final int[] INTERVALS = {5, 10, 15, 30};
-    private static final int[] INTERVAL_CHIPS = {R.id.chip_i5, R.id.chip_i10, R.id.chip_i15, R.id.chip_i30};
+    private static final int[] LEADS = {10, 15, 30};
+    private static final int[] CHIPS = {R.id.chip_10, R.id.chip_15, R.id.chip_30};
 
     private LinearLayout addrList;
     private TextView mBatteryHint;
@@ -77,6 +78,14 @@ public class SettingsActivity extends AppCompatActivity {
             }
         });
         btnBattery.setOnClickListener(v -> askBattery());
+
+        // Xiaomi / Redmi / POCO (MIUI) block background work unless "Автозапуск" is on
+        String maker = Build.MANUFACTURER == null ? "" : Build.MANUFACTURER.toLowerCase();
+        View autostart = findViewById(R.id.btn_autostart);
+        if (maker.contains("xiaomi") || maker.contains("redmi") || maker.contains("poco")) {
+            autostart.setVisibility(View.VISIBLE);
+            autostart.setOnClickListener(v -> openAutostart());
+        }
         ((TextView) findViewById(R.id.m_version)).setText("Версія " + AppUpdate.installedName(this));
 
         Store st = new Store(this);
@@ -101,23 +110,31 @@ public class SettingsActivity extends AppCompatActivity {
                 }
             }
         });
+    }
 
-        ChipGroup intervals = findViewById(R.id.cg_interval);
-        int checkedInterval = R.id.chip_i10;
-        for (int i = 0; i < INTERVALS.length; i++) if (INTERVALS[i] == st.interval()) checkedInterval = INTERVAL_CHIPS[i];
-        intervals.check(checkedInterval);
-        intervals.setOnCheckedStateChangeListener((group, ids) -> {
-            if (ids.isEmpty()) return;
-            for (int i = 0; i < INTERVAL_CHIPS.length; i++) {
-                if (INTERVAL_CHIPS[i] == ids.get(0)) {
-                    Store s = new Store(this);
-                    if (s.interval() != INTERVALS[i]) {
-                        s.setInterval(INTERVALS[i]);
-                        runTick();
-                    }
-                }
-            }
-        });
+    /** Dialog to change an address's name ("Дім", "Батьки"…). */
+    static void rename(AppCompatActivity act, long domId, Runnable done) {
+        Address a = new Store(act).find(domId);
+        if (a == null) return;
+        View v = act.getLayoutInflater().inflate(R.layout.dialog_rename, null);
+        TextInputEditText et = v.findViewById(R.id.et_rename);
+        et.setText(a.name);
+        et.setSelection(a.name.length());
+        new MaterialAlertDialogBuilder(act)
+                .setTitle("Назва адреси")
+                .setView(v)
+                .setPositiveButton("Зберегти", (d, w) -> {
+                    String n = et.getText() == null ? "" : et.getText().toString().trim();
+                    if (n.isEmpty()) return;
+                    Store s = new Store(act);
+                    List<Address> all = s.addresses();
+                    for (Address x : all) if (x.domId == domId) x.name = n;
+                    s.saveAddresses(all);
+                    new Thread(() -> Updater.tick(act.getApplicationContext(), false)).start();
+                    done.run();
+                })
+                .setNegativeButton("Скасувати", null)
+                .show();
     }
 
     @Override
@@ -176,6 +193,8 @@ public class SettingsActivity extends AppCompatActivity {
                 runTick();
             });
 
+            row.findViewById(R.id.a_edit).setOnClickListener(v -> rename(this, a.domId, this::renderAddresses));
+
             ImageButton del = row.findViewById(R.id.a_delete);
             del.setOnClickListener(v -> new MaterialAlertDialogBuilder(this)
                     .setTitle("Видалити адресу?")
@@ -213,6 +232,19 @@ public class SettingsActivity extends AppCompatActivity {
             try {
                 startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
             } catch (ActivityNotFoundException ignored) {
+            }
+        }
+    }
+
+    private void openAutostart() {
+        try {
+            startActivity(new Intent().setComponent(new ComponentName("com.miui.securitycenter",
+                    "com.miui.permcenter.autostart.AutoStartManagementActivity")));
+        } catch (Exception e) {
+            try {
+                startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.parse("package:" + getPackageName())));
+            } catch (Exception ignored) {
             }
         }
     }

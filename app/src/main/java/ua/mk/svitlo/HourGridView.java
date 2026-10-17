@@ -53,9 +53,16 @@ public class HourGridView extends View {
         return 5 * dp;
     }
 
+    /** Big phone font settings: keep "23" inside its box. */
+    private void fitText(int width) {
+        float cw = (width - 8 * dp - 11 * gap()) / 12f;
+        text.setTextSize(cw > 0 ? Math.min(baseTextSize, cw * 0.62f) : baseTextSize);
+    }
+
     @Override
     protected void onMeasure(int widthSpec, int heightSpec) {
         int w = MeasureSpec.getSize(widthSpec);
+        fitText(w);
         int h = (int) (2 * cellH() + gap() + 8 * dp);
         setMeasuredDimension(w, h);
     }
@@ -69,8 +76,7 @@ public class HourGridView extends View {
         float ch = cellH();
         float cw = (getWidth() - 2 * pad - 11 * gap) / 12f;
         float rad = 8 * dp;
-        // big phone font settings: keep "23" inside its box
-        text.setTextSize(Math.min(baseTextSize, cw * 0.62f));
+        fitText(getWidth());
         for (int hr = 0; hr < 24; hr++) {
             float left = pad + (hr % 12) * (cw + gap);
             float top = pad + (hr / 12) * (ch + gap);
