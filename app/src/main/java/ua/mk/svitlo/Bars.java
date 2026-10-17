@@ -36,6 +36,32 @@ final class Bars {
         });
     }
 
+    /**
+     * Makes page swiping lighter and nicer: reacts to a shorter finger movement, keeps the
+     * neighbouring page ready, and fades/shrinks pages slightly while they move.
+     */
+    static void smoothPager(androidx.viewpager2.widget.ViewPager2 pager) {
+        pager.setOffscreenPageLimit(1);
+        pager.setPageTransformer((page, position) -> {
+            float a = Math.min(1f, Math.abs(position));
+            page.setAlpha(1f - 0.35f * a);
+            float scale = 1f - 0.05f * a;
+            page.setScaleX(scale);
+            page.setScaleY(scale);
+        });
+        try {
+            View child = pager.getChildAt(0);
+            if (child instanceof androidx.recyclerview.widget.RecyclerView) {
+                java.lang.reflect.Field f = androidx.recyclerview.widget.RecyclerView.class
+                        .getDeclaredField("mTouchSlop");
+                f.setAccessible(true);
+                f.set(child, (int) f.get(child) / 2);
+            }
+        } catch (Exception ignored) {
+            // keep the default sensitivity
+        }
+    }
+
     /** Adds extra bottom padding to a scrolling content view (remembers its own padding). */
     static void padBottom(View v, int extra) {
         Object tag = v.getTag(R.id.tag_base_padding);

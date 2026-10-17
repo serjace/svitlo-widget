@@ -54,6 +54,7 @@ public class DayActivity extends AppCompatActivity {
         load();
         ViewPager2 pager = findViewById(R.id.day_pager);
         pager.setAdapter(adapter);
+        Bars.smoothPager(pager);
         TabLayout tabs = findViewById(R.id.day_tabs);
         new TabLayoutMediator(tabs, pager, (tab, pos) -> tab.setText(dayLabel(pos))).attach();
         pager.setCurrentItem(day, false);

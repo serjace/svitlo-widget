@@ -22,7 +22,7 @@ import java.util.List;
  */
 public class PowerWidget extends AppWidgetProvider {
     static final String ACTION_SWITCH = "ua.mk.svitlo.SWITCH";
-    private static final int[] ROWS = {R.id.w_row1, R.id.w_row2};
+    private static final int[] ROWS = {R.id.w_row1, R.id.w_row2, R.id.w_row3, R.id.w_row4};
 
     /** Tap on the place name / ⇄: show the next saved address on this widget. */
     @Override
@@ -89,10 +89,7 @@ public class PowerWidget extends AppWidgetProvider {
     }
 
     static RemoteViews build(Context ctx, Store st, Schedule sch, ZonedDateTime now, int id, boolean small) {
-        boolean large = st.widgetLarge(id);
-        int layout = small ? (large ? R.layout.widget_small_large : R.layout.widget_small)
-                : (large ? R.layout.widget_power_large : R.layout.widget_power);
-        RemoteViews v = new RemoteViews(ctx.getPackageName(), layout);
+        RemoteViews v = new RemoteViews(ctx.getPackageName(), small ? R.layout.widget_small : R.layout.widget_power);
 
         Address a = st.widgetAddress(id);
 
@@ -146,15 +143,16 @@ public class PowerWidget extends AppWidgetProvider {
         }
 
         v.setImageViewResource(R.id.w_icon, Timeline.iconRes(s.level));
-        if (large) {
-            v.setTextViewText(R.id.w_detail, s.line1.isEmpty() ? s.shortDetail : s.line1);
-            return v;
-        }
-
         v.setTextViewText(R.id.w_detail, s.detail);
+
+        // Text sizes stay the same; a taller widget simply shows more coming periods.
+        // Fixed part: padding 20 + name 34 + status 46 + time 28 = 128dp, then 24dp per row.
+        int height = AppWidgetManager.getInstance(ctx).getAppWidgetOptions(id)
+                .getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0);
+        int rows = height == 0 ? 2 : Math.max(0, Math.min(ROWS.length, (height - 132) / 24));
         List<int[]> up = s.upcoming(ROWS.length);
         for (int k = 0; k < ROWS.length; k++) {
-            if (k < up.size()) {
+            if (k < up.size() && k < rows) {
                 int[] r = up.get(k);
                 v.setViewVisibility(ROWS[k], View.VISIBLE);
                 v.setTextViewText(ROWS[k], Status.rowTime(r, s.nowIdx) + "  " + Status.rowLabel(r).toLowerCase());

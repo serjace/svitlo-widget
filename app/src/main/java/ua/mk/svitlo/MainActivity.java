@@ -70,6 +70,7 @@ public class MainActivity extends AppCompatActivity {
         cardUpdate = findViewById(R.id.card_update);
         pager = findViewById(R.id.pager);
         pager.setAdapter(adapter);
+        Bars.smoothPager(pager);
         pager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageSelected(int position) {

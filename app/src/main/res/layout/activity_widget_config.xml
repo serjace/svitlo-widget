@@ -63,43 +63,13 @@
                 android:textSize="17sp"
                 app:icon="@drawable/ic_add" />
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:fontFamily="sans-serif-medium"
-                android:text="Розмір тексту"
-                android:textColor="?attr/colorOnSurface"
-                android:textSize="21sp" />
-
-            <RadioGroup
-                android:id="@+id/cfg_size"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp">
-
-                <com.google.android.material.radiobutton.MaterialRadioButton
-                    android:id="@+id/cfg_normal"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:minHeight="56dp"
-                    android:text="Звичайний — статус і найближчі години"
-                    android:textSize="18sp" />
-
-                <com.google.android.material.radiobutton.MaterialRadioButton
-                    android:id="@+id/cfg_large"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:minHeight="56dp"
-                    android:text="Великий — лише головне, найбільшими літерами"
-                    android:textSize="18sp" />
-            </RadioGroup>
+            
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:text="Порада: розтягніть віджет на екрані — текст стане ще більшим. Щоб перемкнути адресу прямо на віджеті, торкніться назви місця або значка ⇄ вгорі."
+                android:text="Щоб перемкнути адресу прямо на віджеті, торкніться назви місця або значка ⇄ вгорі. Якщо розтягнути віджет, він покаже більше найближчих годин."
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="16sp" />
 

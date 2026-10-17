@@ -12,7 +12,7 @@ import com.google.android.material.radiobutton.MaterialRadioButton;
 
 import java.util.List;
 
-/** Opens when a widget is placed (and from "Налаштувати" on Android 12+): pick address and text size. */
+/** Opens when a widget is placed (and from "Налаштувати" on Android 12+): pick the address. */
 public class WidgetConfigActivity extends AppCompatActivity {
     private int widgetId = AppWidgetManager.INVALID_APPWIDGET_ID;
     private RadioGroup addresses;
@@ -35,8 +35,6 @@ public class WidgetConfigActivity extends AppCompatActivity {
         }
 
         addresses = findViewById(R.id.cfg_addresses);
-        Store st = new Store(this);
-        ((RadioGroup) findViewById(R.id.cfg_size)).check(st.widgetLarge(widgetId) ? R.id.cfg_large : R.id.cfg_normal);
         findViewById(R.id.cfg_add).setOnClickListener(v -> startActivity(new Intent(this, AddAddressActivity.class)));
         findViewById(R.id.cfg_done).setOnClickListener(v -> done());
     }
@@ -74,7 +72,6 @@ public class WidgetConfigActivity extends AppCompatActivity {
         if (checked == null || !(checked.getTag() instanceof Long)) return;
         Store st = new Store(this);
         st.setWidgetAddress(widgetId, (Long) checked.getTag());
-        st.setWidgetLarge(widgetId, ((RadioGroup) findViewById(R.id.cfg_size)).getCheckedRadioButtonId() == R.id.cfg_large);
         PowerWidget.updateOne(getApplicationContext(), widgetId);
         Updater.ensurePeriodic(getApplicationContext());
         setResult(RESULT_OK, new Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId));
