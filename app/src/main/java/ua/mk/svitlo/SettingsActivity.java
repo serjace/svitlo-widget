@@ -32,6 +32,8 @@ import java.util.List;
 public class SettingsActivity extends AppCompatActivity {
     private static final int[] LEADS = {10, 15, 30};
     private static final int[] CHIPS = {R.id.chip_10, R.id.chip_15, R.id.chip_30};
+    private static final float[] SCALES = {0.85f, 1f, 1.15f, 1.3f};
+    private static final int[] SCALE_CHIPS = {R.id.chip_ws_s, R.id.chip_ws_m, R.id.chip_ws_l, R.id.chip_ws_xl};
 
     private LinearLayout addrList;
     private TextView mBatteryHint;
@@ -98,6 +100,21 @@ public class SettingsActivity extends AppCompatActivity {
         bindSwitch(R.id.sw_return, Store.F_RETURN, st);
         bindSwitch(R.id.sw_emergency, Store.F_EMERGENCY, st);
         bindSwitch(R.id.sw_schedule, Store.F_SCHEDULE, st);
+
+        // Widget text size
+        ChipGroup ws = findViewById(R.id.cg_wscale);
+        int wsChecked = R.id.chip_ws_m;
+        for (int i = 0; i < SCALES.length; i++) if (Math.abs(SCALES[i] - st.widgetScale()) < 0.01f) wsChecked = SCALE_CHIPS[i];
+        ws.check(wsChecked);
+        ws.setOnCheckedStateChangeListener((group, ids) -> {
+            if (ids.isEmpty()) return;
+            for (int i = 0; i < SCALE_CHIPS.length; i++) {
+                if (SCALE_CHIPS[i] == ids.get(0)) {
+                    new Store(this).setWidgetScale(SCALES[i]);
+                    runTick();
+                }
+            }
+        });
 
         ChipGroup leads = findViewById(R.id.cg_lead);
         int checked = R.id.chip_30;
@@ -198,6 +215,15 @@ public class SettingsActivity extends AppCompatActivity {
                 runTick();
             });
 
+            // ↑ ↓ change the order (main-screen buttons and the widget ⇄ follow it)
+            final int pos = i;
+            View up = row.findViewById(R.id.a_up);
+            View down = row.findViewById(R.id.a_down);
+            up.setVisibility(i > 0 ? View.VISIBLE : View.INVISIBLE);
+            down.setVisibility(i < list.size() - 1 ? View.VISIBLE : View.INVISIBLE);
+            up.setOnClickListener(v -> move(pos, pos - 1));
+            down.setOnClickListener(v -> move(pos, pos + 1));
+
             // One button edits both the name and the address (fields come pre-filled)
             row.findViewById(R.id.a_edit).setOnClickListener(v -> startActivity(
                     new Intent(this, AddAddressActivity.class).putExtra(AddAddressActivity.EXTRA_REPLACE, a.domId)));
@@ -221,6 +247,16 @@ public class SettingsActivity extends AppCompatActivity {
             });
             addrList.addView(row);
         }
+    }
+
+    private void move(int from, int to) {
+        Store s = new Store(this);
+        List<Address> all = s.addresses();
+        if (from < 0 || to < 0 || from >= all.size() || to >= all.size()) return;
+        all.add(to, all.remove(from));
+        s.saveAddresses(all);
+        renderAddresses();
+        runTick();
     }
 
     private void updateBatteryButton() {

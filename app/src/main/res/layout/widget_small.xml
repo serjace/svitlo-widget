@@ -53,13 +53,11 @@
 
     <TextView
         android:id="@+id/w_status"
+        android:textSize="26dp"
+        android:ellipsize="end"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
+        android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:autoSizeMaxTextSize="26dp"
-        android:autoSizeMinTextSize="18dp"
-        android:autoSizeStepGranularity="1dp"
-        android:autoSizeTextType="uniform"
         android:fontFamily="sans-serif-medium"
         android:gravity="center_vertical|start"
         android:maxLines="2"
@@ -68,15 +66,13 @@
 
     <TextView
         android:id="@+id/w_detail"
+        android:textSize="19dp"
+        android:ellipsize="end"
         android:layout_width="match_parent"
-        android:layout_height="26dp"
-        android:autoSizeMaxTextSize="19dp"
-        android:autoSizeMinTextSize="14dp"
-        android:autoSizeStepGranularity="1dp"
-        android:autoSizeTextType="uniform"
+        android:layout_height="wrap_content"
         android:fontFamily="sans-serif-medium"
         android:gravity="center_vertical|start"
-        android:maxLines="1"
+        android:maxLines="2"
         android:text="до 14:00"
         android:textColor="#FFFFFFFF" />
 </LinearLayout>

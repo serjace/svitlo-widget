@@ -99,7 +99,9 @@ final class Store {
     Address widgetAddress(int widgetId) {
         long d = p.getLong("w_" + widgetId, -1);
         Address a = find(d);
-        return a != null ? a : active();
+        if (a != null) return a;
+        List<Address> list = addresses();   // a new widget shows the first address of the list
+        return list.isEmpty() ? null : list.get(0);
     }
 
     void cycleWidget(int widgetId) {
@@ -118,17 +120,13 @@ final class Store {
         p.edit().remove("w_" + widgetId).remove("wl_" + widgetId).apply();
     }
 
-    void setWidgetAddress(int widgetId, long domId) {
-        p.edit().putLong("w_" + widgetId, domId).apply();
+    /** Text size on all widgets, chosen in Settings: 0.85, 1 (default), 1.15 or 1.3. */
+    float widgetScale() {
+        return p.getFloat("w_scale", 1f);
     }
 
-    /** Widget shows only the main things, in the biggest letters. */
-    boolean widgetLarge(int widgetId) {
-        return p.getBoolean("wl_" + widgetId, false);
-    }
-
-    void setWidgetLarge(int widgetId, boolean large) {
-        p.edit().putBoolean("wl_" + widgetId, large).apply();
+    void setWidgetScale(float k) {
+        p.edit().putFloat("w_scale", k).apply();
     }
 
     // ---- settings ----

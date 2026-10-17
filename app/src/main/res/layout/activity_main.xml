@@ -51,18 +51,28 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- "Дім / Робота" buttons: stay in place, only the selection moves when swiping -->
-    <com.google.android.material.chip.ChipGroup
-        android:id="@+id/main_chips"
+    <!-- "Дім / Робота" buttons: stay in place, only the selection moves when swiping.
+         Centred; with many addresses they become a row you can scroll sideways. -->
+    <HorizontalScrollView
+        android:id="@+id/main_chips_scroll"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
         android:layout_marginBottom="4dp"
-        android:visibility="gone"
-        app:selectionRequired="true"
-        app:singleSelection="true" />
+        android:clipToPadding="false"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:scrollbars="none"
+        android:visibility="gone">
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/main_chips"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:selectionRequired="true"
+            app:singleLine="true"
+            app:singleSelection="true" />
+    </HorizontalScrollView>
 
     <!-- One page per address; swipe left/right -->
     <androidx.viewpager2.widget.ViewPager2

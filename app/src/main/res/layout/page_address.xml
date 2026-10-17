@@ -102,6 +102,15 @@
                     android:gravity="center"
                     android:textSize="18sp" />
 
+                <!-- What comes after that, a bit smaller -->
+                <TextView
+                    android:id="@+id/h_line3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:textSize="19sp" />
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_add_first"
                     android:layout_width="wrap_content"

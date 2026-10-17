@@ -16,8 +16,12 @@ final class Status {
     String title = "";
     /** "Вимкнуть о 14:00" — what happens next (big, app). */
     String line1 = "";
-    /** "через 40 хв · до 16:00" — supporting line (app). */
+    /** "через 40 хв" — supporting line (app). */
     String line2 = "";
+    /** "Потім вимкнуть о 16:00" — what comes after that (app, smaller). */
+    String line3 = "";
+    /** How many of {@link #next} the big texts already describe (now + the next change). */
+    int shown = 1;
     /** One line for the 4×2 widget: "Вимкнуть о 14:00 · через 40 хв". */
     String detail = "";
     /** Very short, for the 2×2 widget: "до 14:00". */
@@ -204,6 +208,63 @@ final class Status {
         return b.toString();
     }
 
+    /**
+     * Fills the texts from the periods: now (title) → the next change (line1, with a countdown)
+     * → the change after that (line3). Possible outages count as a change too.
+     */
+    private void describe(ZonedDateTime now, LocalDate today) {
+        if (next.isEmpty()) return;
+        int[] cur = next.get(0);
+        if (next.size() < 2) {
+            shown = 1;
+            String l;
+            if (level == GREEN) {
+                l = cur[1] < 96 ? "Сьогодні відключень більше немає" : "Відключень за графіком немає";
+            } else {
+                l = "до " + at(cur[1]) + (cur[1] < 96 ? " · далі графіка ще немає" : "");
+            }
+            set(l, "", l, l);
+            return;
+        }
+        shown = 2;
+        int[] nx = next.get(1);
+        String p1 = change(nx[2], cur[2], nx[0]);
+        String u = until(now, today, nx[0]);
+        if (next.size() > 2) {
+            int[] af = next.get(2);
+            line3 = "Потім " + lower(change(af[2], nx[2], af[0]));
+        }
+        set(p1, "через " + u, p1 + " · через " + u, shortChange(nx[2], cur[2], nx[0]));
+    }
+
+    /** "Вимкнуть о 20:30", "Можливе відключення з 20:00", "Увімкнуть о 22:00". */
+    static String change(int lvl, int prevLvl, int start) {
+        String t = String.format(Locale.US, "%02d:%02d", (start % 48) / 2, (start % 2) * 30)
+                + (start >= 48 ? " (завтра)" : "");
+        if (lvl == RED) return "Вимкнуть о " + t;
+        if (lvl == YELLOW) return "Можливе відключення з " + t;
+        return prevLvl == RED ? "Увімкнуть о " + t : "Світло буде з " + t;
+    }
+
+    /** For the small square widget: "вимкнуть о 20:30", "можливе з 20:00". */
+    static String shortChange(int lvl, int prevLvl, int start) {
+        String t = hm(start % 48) + (start >= 48 ? " завтра" : "");
+        if (lvl == RED) return "вимкнуть о " + t;
+        if (lvl == YELLOW) return "можливе з " + t;
+        return prevLvl == RED ? "увімкнуть о " + t : "світло з " + t;
+    }
+
+    static String lower(String s) {
+        return s.isEmpty() ? s : Character.toLowerCase(s.charAt(0)) + s.substring(1);
+    }
+
+    /** Periods after those the big texts already describe (widget rows). */
+    List<int[]> after(int max) {
+        List<int[]> r = new ArrayList<>();
+        for (int k = shown; k < next.size() && r.size() < max; k++) r.add(next.get(k));
+        return r;
+    }
+
     private void set(String line1, String line2, String detail, String shortDetail) {
         this.line1 = line1;
         this.line2 = line2;
@@ -250,45 +311,17 @@ final class Status {
             s.set("Аварійне відключення", which + " · час повернення невідомий",
                     "Аварійне відключення (" + which + ")", "аварійне");
             s.next.add(new int[]{ni, -1, RED, 1});
+            s.shown = 1;
             from = ni + 1;
         } else if (code >= Schedule.OFF) {
             s.level = RED;
             s.title = "Світла немає";
-            int end = runEnd(c, ni, Schedule.OFF, Schedule.SURE_OFF);
-            String u = until(now, today, end);
-            String l2 = "через " + u;
-            if (end < 96 && c[end] == Schedule.PROBABLY) {
-                l2 += " · потім можливе до " + hm(runEnd(c, end, Schedule.PROBABLY, Schedule.PROBABLY));
-            }
-            s.set("Зʼявиться о " + at(end), l2, "Зʼявиться о " + hm(end) + " · через " + u, "до " + hm(end));
         } else if (code == Schedule.PROBABLY) {
             s.level = YELLOW;
             s.title = "Можливе відключення";
-            int e = runEnd(c, ni, Schedule.PROBABLY, Schedule.PROBABLY);
-            String u = until(now, today, e);
-            s.set("до " + at(e), "ще " + u + " · світло, ймовірно, є",
-                    "до " + hm(e) + " · ще " + u, "до " + hm(e));
         } else {
             s.level = GREEN;
             s.title = "Світло є";
-            int j = ni + 1;
-            while (j < 96 && c[j] >= 0 && c[j] < Schedule.OFF) j++;
-            int p = ni + 1;
-            while (p < 96 && c[p] == Schedule.ENABLE) p++;
-            if (j < 96 && c[j] >= Schedule.OFF) {
-                String u = until(now, today, j);
-                int e = runEnd(c, j, Schedule.OFF, Schedule.SURE_OFF);
-                s.set("Вимкнуть о " + at(j), "через " + u + " · до " + hm(e),
-                        "Вимкнуть о " + hm(j) + " · через " + u, "до " + hm(j));
-            } else if (p < 96 && c[p] == Schedule.PROBABLY) {
-                String u = until(now, today, p);
-                s.set("Можливе відключення о " + at(p), "через " + u,
-                        "Можливе о " + hm(p) + " · через " + u, "до " + hm(p));
-            } else if (j < 96) {
-                s.set("Сьогодні відключень більше немає", "", "Сьогодні відключень більше немає", "сьогодні без відключень");
-            } else {
-                s.set("Відключень за графіком немає", "", "Відключень за графіком немає", "без відключень");
-            }
         }
 
         int i = from;
@@ -299,6 +332,7 @@ final class Status {
             s.next.add(new int[]{i, e, lvl, 0});
             i = e;
         }
+        if (!gav && !sgav) s.describe(now, today);
         return s;
     }
 }

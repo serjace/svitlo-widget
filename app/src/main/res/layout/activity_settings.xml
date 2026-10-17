@@ -44,7 +44,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:layout_marginBottom="8dp"
-                android:text="Перемикач — сповіщення для цієї адреси."
+                android:text="Перемикач — сповіщення для цієї адреси. Стрілки ↑ ↓ змінюють порядок (так само йдуть кнопки на головному екрані і ⇄ на віджеті)."
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="15sp" />
 
@@ -244,13 +244,76 @@
                 android:layout_height="wrap_content"
                 app:cardCornerRadius="20dp">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="16dp"
-                    android:text="Утримуйте палець на порожньому місці головного екрана → «Віджети» → «Світло». Є два розміри: великий (4×2) і квадратний (2×2). Під час додавання оберіть адресу.\n\nКолір віджета показує статус: зелений — світло є, жовтий — можливе відключення, червоний — світла немає.\n\nЯкщо розтягнути великий віджет, він покаже більше найближчих годин.\n\nЩоб перемкнути адресу на віджеті (Дім ⇄ Робота), торкніться значка ⇄ вгорі віджета. Торкання решти віджета відкриває застосунок на цій адресі.\n\nДані на віджеті оновлюються самі приблизно кожні 10 хвилин."
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="16sp" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Розмір тексту на віджеті"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="18sp" />
+
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/cg_wscale"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        app:selectionRequired="true"
+                        app:singleSelection="true">
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_ws_s"
+                            style="@style/Widget.Material3.Chip.Filter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Менший"
+                            android:textSize="16sp" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_ws_m"
+                            style="@style/Widget.Material3.Chip.Filter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Звичайний"
+                            android:textSize="16sp" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_ws_l"
+                            style="@style/Widget.Material3.Chip.Filter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Більший"
+                            android:textSize="16sp" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_ws_xl"
+                            style="@style/Widget.Material3.Chip.Filter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Найбільший"
+                            android:textSize="16sp" />
+                    </com.google.android.material.chip.ChipGroup>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="Утримуйте палець на порожньому місці головного екрана → «Віджети» → «Світло». Є два розміри: великий (4×2) і квадратний (2×2). Новий віджет показує першу адресу зі списку вище.
+
+Колір віджета показує статус: зелений — світло є, жовтий — можливе відключення, червоний — світла немає.
+
+Якщо розтягнути великий віджет, він покаже більше найближчих годин.
+
+Щоб перемкнути адресу на віджеті (Дім ⇄ Робота), торкніться значка ⇄ вгорі віджета. Торкання решти віджета відкриває застосунок на цій адресі.
+
+Дані на віджеті оновлюються самі приблизно кожні 10 хвилин."
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="16sp" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <TextView

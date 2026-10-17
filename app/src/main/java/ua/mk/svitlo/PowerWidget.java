@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.RemoteViews;
 
@@ -18,8 +19,8 @@ import java.util.List;
 
 /**
  * The big 4×2 widget (SmallWidget reuses this for the square one).
- * Background colour = status. Each widget shows the address chosen when it was placed
- * (WidgetConfigActivity), in normal or large text. Tapping opens the app on that address.
+ * Background colour = status. Each widget shows one address: the first of the list at first,
+ * ⇄ switches to the next one. Tapping opens the app on that address.
  */
 public class PowerWidget extends AppWidgetProvider {
     static final String ACTION_SWITCH = "ua.mk.svitlo.SWITCH";
@@ -100,6 +101,10 @@ public class PowerWidget extends AppWidgetProvider {
         mgr.updateAppWidget(id, build(ctx, st, Schedule.load(st), ZonedDateTime.now(Schedule.ZONE), id, small));
     }
 
+    private static void size(RemoteViews v, int viewId, float dp) {
+        v.setTextViewTextSize(viewId, TypedValue.COMPLEX_UNIT_DIP, dp);
+    }
+
     /** Same colour with some transparency, for secondary text. */
     private static int soft(int color, int alpha) {
         return (color & 0x00FFFFFF) | (alpha << 24);
@@ -160,28 +165,51 @@ public class PowerWidget extends AppWidgetProvider {
             v.setOnClickPendingIntent(R.id.w_switch, swPi);
         }
 
+        // Fixed text sizes × the size chosen in Settings; a phrase too long for the width
+        // gets a little smaller. Portrait size: width = MIN_WIDTH, height = MAX_HEIGHT.
+        float k = st.widgetScale();
+        Bundle opts = AppWidgetManager.getInstance(ctx).getAppWidgetOptions(id);
+        int wDp = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0);
+        int hDp = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0);
+        float inner = wDp > 0 ? wDp - (small ? 24 : 28) : 0;
+        float nameW = inner > 0 ? inner - (small ? 21 : 24) - (several ? (small ? 44 : 50) : 0) : 0;
+        size(v, R.id.w_address, Fit.size(ctx, place, (small ? 16 : 18) * k, 13, nameW, true, 1));
+
         if (small) {
+            size(v, R.id.w_status, Fit.size(ctx, s.title, 26 * k, 18 * k, inner, true, 2));
             v.setTextViewText(R.id.w_detail, s.shortDetail);
+            size(v, R.id.w_detail, Fit.size(ctx, s.shortDetail, 19 * k, 14 * k, inner, true, 2));
             return v;
         }
 
         v.setImageViewResource(R.id.w_icon, Timeline.iconRes(s.level));
-        v.setTextViewText(R.id.w_detail, s.detail);
+        float statusSize = Fit.size(ctx, s.title, 31 * k, 22 * k, inner > 0 ? inner - 42 : 0, true, 1);
+        size(v, R.id.w_status, statusSize);
 
-        // Text sizes stay the same; a taller widget simply shows more coming periods.
-        // Fixed part: padding 20 + name 34 + status 46 + time 28 = 128dp, then 24dp per row.
-        int height = AppWidgetManager.getInstance(ctx).getAppWidgetOptions(id)
-                .getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0);
-        int rows = height == 0 ? 2 : Math.max(0, Math.min(ROWS.length, (height - 132) / 24));
-        List<int[]> up = s.upcoming(ROWS.length);
-        for (int k = 0; k < ROWS.length; k++) {
-            if (k < up.size() && k < rows) {
-                int[] r = up.get(k);
-                v.setViewVisibility(ROWS[k], View.VISIBLE);
-                v.setTextViewText(ROWS[k], Status.rowTime(r, s.nowIdx) + "  " + Status.rowLabel(r).toLowerCase());
-                v.setTextColor(ROWS[k], soft(on, 0xF2));
+        // Next change: with the countdown if it fits, otherwise just the time
+        String detail = s.detail;
+        float detailMax = 19 * k;
+        if (!Fit.fits(ctx, detail, detailMax * 0.85f, inner, true, 1)) detail = s.line1;
+        float detailSize = Fit.size(ctx, detail, detailMax, 14 * k, inner, true, 1);
+        v.setTextViewText(R.id.w_detail, detail);
+        size(v, R.id.w_detail, detailSize);
+
+        // What comes after that; a taller widget shows more of the coming periods
+        float rowSize = 17 * k;
+        float used = 20 + 34 + 2 + Math.max(40, Fit.lineDp(statusSize)) + Fit.lineDp(detailSize) + 4 + 4;
+        int rows = hDp == 0 ? 2 : (int) Math.max(0, Math.min(ROWS.length,
+                (hDp - used) / (Fit.lineDp(rowSize) + 1)));
+        List<int[]> up = s.after(ROWS.length);
+        for (int n = 0; n < ROWS.length; n++) {
+            if (n < up.size() && n < rows) {
+                int[] r = up.get(n);
+                String text = Status.rowTime(r, s.nowIdx) + "  " + Status.rowLabel(r).toLowerCase();
+                v.setViewVisibility(ROWS[n], View.VISIBLE);
+                v.setTextViewText(ROWS[n], text);
+                v.setTextColor(ROWS[n], soft(on, 0xF2));
+                size(v, ROWS[n], Fit.size(ctx, text, rowSize, 12 * k, inner, false, 1));
             } else {
-                v.setViewVisibility(ROWS[k], View.GONE);
+                v.setViewVisibility(ROWS[n], View.GONE);
             }
         }
         return v;

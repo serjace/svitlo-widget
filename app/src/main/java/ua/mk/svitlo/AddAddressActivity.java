@@ -382,13 +382,23 @@ public class AddAddressActivity extends AppCompatActivity {
                 .show();
     }
 
+    /** "Адреса 3" for the third address added without a name (a free number if that one is taken). */
+    private static String defaultName(List<Address> list) {
+        for (int n = list.size() + 1; ; n++) {
+            String name = "Адреса " + n;
+            boolean taken = false;
+            for (Address x : list) if (name.equalsIgnoreCase(x.name)) taken = true;
+            if (!taken) return name;
+        }
+    }
+
     /** Runs in the background: saves (or replaces) the address and closes the screen. */
     private void finishSave(Item ns, Item st, Item dom, String custom, JSONArray oq, Item from) {
         Context app = getApplicationContext();
         Address a = new Address();
         a.domId = dom.id;
         a.full = ns.name + ", " + st.name + ", " + dom.name;
-        a.name = custom.isEmpty() ? st.name + ", " + dom.name : custom;
+        a.name = custom;
         a.applyQueues(oq);
         a.queuesCheckedAt = System.currentTimeMillis();
         a.filId = sel[0] != null ? sel[0].id : 0;
@@ -418,7 +428,10 @@ public class AddAddressActivity extends AppCompatActivity {
                 }
             }
         }
-        if (!replaced) list.add(a);
+        if (!replaced) {
+            if (a.name.isEmpty()) a.name = defaultName(list);
+            list.add(a);
+        }
         store.saveAddresses(list);
         store.setActiveDom(a.domId);
         Updater.tick(app, true);

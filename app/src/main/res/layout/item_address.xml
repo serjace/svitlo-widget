@@ -61,6 +61,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="34dp"
+            android:layout_marginEnd="4dp"
             android:layout_weight="1"
             android:minHeight="48dp"
             android:text="Сповіщення"
@@ -68,10 +69,27 @@
             android:textSize="15sp" />
 
         <ImageButton
-            android:id="@+id/a_edit"
-            android:layout_width="48dp"
+            android:id="@+id/a_up"
+            android:layout_width="44dp"
             android:layout_height="48dp"
-            android:layout_marginStart="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Перемістити вище"
+            android:src="@drawable/ic_arrow_up"
+            android:tint="?attr/colorOnSurfaceVariant" />
+
+        <ImageButton
+            android:id="@+id/a_down"
+            android:layout_width="44dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Перемістити нижче"
+            android:src="@drawable/ic_arrow_down"
+            android:tint="?attr/colorOnSurfaceVariant" />
+
+        <ImageButton
+            android:id="@+id/a_edit"
+            android:layout_width="44dp"
+            android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Редагувати назву й адресу"
             android:src="@drawable/ic_edit"
@@ -79,7 +97,7 @@
 
         <ImageButton
             android:id="@+id/a_delete"
-            android:layout_width="48dp"
+            android:layout_width="44dp"
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Видалити адресу"

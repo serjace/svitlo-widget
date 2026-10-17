@@ -11,6 +11,7 @@ import android.text.style.ForegroundColorSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -50,6 +51,7 @@ public class MainActivity extends AppCompatActivity {
     private View cardUpdate;
     private ViewPager2 pager;
     private ChipGroup chips;
+    private HorizontalScrollView chipsScroll;
     private final List<Integer> chipIds = new ArrayList<>();
     private String chipsKey;
     private int navInset;   // space to keep free at the bottom for the (transparent) gesture bar
@@ -78,6 +80,7 @@ public class MainActivity extends AppCompatActivity {
         pager.setAdapter(adapter);
         Bars.smoothPager(pager);
         chips = findViewById(R.id.main_chips);
+        chipsScroll = findViewById(R.id.main_chips_scroll);
         pager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageScrollStateChanged(int state) {
@@ -250,7 +253,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkChip(int pos) {
-        if (pos >= 0 && pos < chipIds.size()) chips.check(chipIds.get(pos));
+        if (pos < 0 || pos >= chipIds.size()) return;
+        chips.check(chipIds.get(pos));
+        // keep the selected button in view (centred) when the row is wider than the screen
+        View chip = chips.findViewById(chipIds.get(pos));
+        chipsScroll.post(() -> {
+            if (chip == null) return;
+            int x = chipsScroll.getPaddingLeft() + chip.getLeft() + chip.getWidth() / 2 - chipsScroll.getWidth() / 2;
+            chipsScroll.smoothScrollTo(Math.max(0, x), 0);
+        });
     }
 
     /**
@@ -265,10 +276,10 @@ public class MainActivity extends AppCompatActivity {
         chips.removeAllViews();
         chipIds.clear();
         if (list.size() < 2) {
-            chips.setVisibility(View.GONE);
+            chipsScroll.setVisibility(View.GONE);
             return;
         }
-        chips.setVisibility(View.VISIBLE);
+        chipsScroll.setVisibility(View.VISIBLE);
         LayoutInflater inf = getLayoutInflater();
         for (int i = 0; i < list.size(); i++) {
             final int pos = i;
@@ -345,7 +356,7 @@ public class MainActivity extends AppCompatActivity {
     private class Page extends RecyclerView.ViewHolder {
         final View addrBox, cardNext, cardToday, cardTomorrow, mTomorrowMore;
         final MaterialButton btnAddFirst;
-        final TextView addrName, addrFull, hTitle, hLine1, hLine2, mTodayLabel, mTomorrowLabel,
+        final TextView addrName, addrFull, hTitle, hLine1, hLine2, hLine3, mTodayLabel, mTomorrowLabel,
                 mTomorrowText, mUpdated, mQueues;
         final MaterialCardView cardHero;
         final ImageView hIcon;
@@ -365,6 +376,7 @@ public class MainActivity extends AppCompatActivity {
             hTitle = v.findViewById(R.id.h_title);
             hLine1 = v.findViewById(R.id.h_line1);
             hLine2 = v.findViewById(R.id.h_line2);
+            hLine3 = v.findViewById(R.id.h_line3);
             btnAddFirst = v.findViewById(R.id.btn_add_first);
             cardNext = v.findViewById(R.id.card_next);
             mNext = v.findViewById(R.id.m_next);
@@ -413,6 +425,9 @@ public class MainActivity extends AppCompatActivity {
             hLine2.setText(s.line2);
             hLine2.setTextColor(on);
             hLine2.setVisibility(s.line2.isEmpty() ? View.GONE : View.VISIBLE);
+            hLine3.setText(s.line3);
+            hLine3.setTextColor(on);
+            hLine3.setVisibility(s.line3.isEmpty() ? View.GONE : View.VISIBLE);
             if (a == null) {
                 btnAddFirst.setText("Додати адресу");
                 btnAddFirst.setOnClickListener(x ->

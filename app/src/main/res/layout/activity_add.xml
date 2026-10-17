@@ -104,8 +104,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:hint="Назва (необовʼязково)"
-                app:helperText="Наприклад: Дім, Батьки">
+                android:hint="Назва"
+                app:helperText="Наприклад: Дім, Батьки. Якщо не вказати — буде «Адреса 1», «Адреса 2»…">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_name"

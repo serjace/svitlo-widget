@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Big widget. Fixed, large text sizes (they never jump around); a taller widget just shows
-     more coming periods. Single lines only shrink a little if a long phrase wouldn't fit. -->
+<!-- Big widget. Text sizes are set in code (PowerWidget): fixed, times the size chosen in
+     Settings, and only a little smaller when a long phrase wouldn't fit the width.
+     A taller widget just shows more coming periods. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/w_root"
     android:layout_width="match_parent"
@@ -54,9 +55,10 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="44dp"
+        android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
         android:gravity="center_vertical"
+        android:minHeight="40dp"
         android:orientation="horizontal">
 
         <ImageView
@@ -68,14 +70,12 @@
 
         <TextView
             android:id="@+id/w_status"
+            android:textSize="31dp"
+            android:ellipsize="end"
             android:layout_width="0dp"
-            android:layout_height="44dp"
+            android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_weight="1"
-            android:autoSizeMaxTextSize="31dp"
-            android:autoSizeMinTextSize="20dp"
-            android:autoSizeStepGranularity="1dp"
-            android:autoSizeTextType="uniform"
             android:fontFamily="sans-serif-medium"
             android:gravity="center_vertical"
             android:maxLines="1"
@@ -85,12 +85,10 @@
 
     <TextView
         android:id="@+id/w_detail"
+        android:textSize="19dp"
+        android:ellipsize="end"
         android:layout_width="match_parent"
-        android:layout_height="28dp"
-        android:autoSizeMaxTextSize="19dp"
-        android:autoSizeMinTextSize="14dp"
-        android:autoSizeStepGranularity="1dp"
-        android:autoSizeTextType="uniform"
+        android:layout_height="wrap_content"
         android:fontFamily="sans-serif-medium"
         android:gravity="center_vertical"
         android:maxLines="1"
@@ -99,13 +97,11 @@
 
     <TextView
         android:id="@+id/w_row1"
+        android:textSize="17dp"
+        android:ellipsize="end"
         android:layout_width="match_parent"
-        android:layout_height="24dp"
+        android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:autoSizeMaxTextSize="17dp"
-        android:autoSizeMinTextSize="13dp"
-        android:autoSizeStepGranularity="1dp"
-        android:autoSizeTextType="uniform"
         android:gravity="center_vertical"
         android:maxLines="1"
         android:text="14:00–16:00  світла немає"
@@ -113,12 +109,10 @@
 
     <TextView
         android:id="@+id/w_row2"
+        android:textSize="17dp"
+        android:ellipsize="end"
         android:layout_width="match_parent"
-        android:layout_height="24dp"
-        android:autoSizeMaxTextSize="17dp"
-        android:autoSizeMinTextSize="13dp"
-        android:autoSizeStepGranularity="1dp"
-        android:autoSizeTextType="uniform"
+        android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:maxLines="1"
         android:text="16:00–16:30  можливе відключення"
@@ -126,12 +120,10 @@
 
     <TextView
         android:id="@+id/w_row3"
+        android:textSize="17dp"
+        android:ellipsize="end"
         android:layout_width="match_parent"
-        android:layout_height="24dp"
-        android:autoSizeMaxTextSize="17dp"
-        android:autoSizeMinTextSize="13dp"
-        android:autoSizeStepGranularity="1dp"
-        android:autoSizeTextType="uniform"
+        android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:maxLines="1"
         android:textColor="#F2FFFFFF"
@@ -139,12 +131,10 @@
 
     <TextView
         android:id="@+id/w_row4"
+        android:textSize="17dp"
+        android:ellipsize="end"
         android:layout_width="match_parent"
-        android:layout_height="24dp"
-        android:autoSizeMaxTextSize="17dp"
-        android:autoSizeMinTextSize="13dp"
-        android:autoSizeStepGranularity="1dp"
-        android:autoSizeTextType="uniform"
+        android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:maxLines="1"
         android:textColor="#F2FFFFFF"
