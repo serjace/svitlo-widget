@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.RemoteViews;
@@ -22,6 +23,7 @@ import java.util.List;
  */
 public class PowerWidget extends AppWidgetProvider {
     static final String ACTION_SWITCH = "ua.mk.svitlo.SWITCH";
+    static final String ACTION_OPEN = "ua.mk.svitlo.WIDGET_OPEN";
     private static final int[] ROWS = {R.id.w_row1, R.id.w_row2, R.id.w_row3, R.id.w_row4};
 
     /** Tap on ⇄: show the next saved address on this widget. */
@@ -33,7 +35,22 @@ public class PowerWidget extends AppWidgetProvider {
             if (id == AppWidgetManager.INVALID_APPWIDGET_ID) return;
             new Store(ctx).cycleWidget(id);
             updateOne(ctx, id);
+        } else if (ACTION_OPEN.equals(intent.getAction())) {
+            try {
+                ctx.startActivity(openIntent(ctx, intent.getLongExtra(MainActivity.EXTRA_DOM, 0)));
+            } catch (Exception ignored) {
+            }
         }
+    }
+
+    /** Opens the app on this address. */
+    private static Intent openIntent(Context ctx, long dom) {
+        Intent open = new Intent(ctx, MainActivity.class)
+                .setAction("ua.mk.svitlo.OPEN")
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        if (dom > 0) open.putExtra(MainActivity.EXTRA_DOM, dom);
+        return open;
     }
 
     protected boolean small() {
@@ -94,13 +111,20 @@ public class PowerWidget extends AppWidgetProvider {
         Address a = st.widgetAddress(id);
 
         // Tap = open the app on this widget's address
-        Intent open = new Intent(ctx, MainActivity.class)
-                .setAction("ua.mk.svitlo.OPEN")
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP
-                        | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        if (a != null) open.putExtra(MainActivity.EXTRA_DOM, a.domId);
-        v.setOnClickPendingIntent(R.id.w_root, PendingIntent.getActivity(ctx, 1000 + id, open,
-                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
+        long dom = a != null ? a.domId : 0;
+        PendingIntent openPi;
+        if (Build.VERSION.SDK_INT < 29) {
+            // Android 9 and older (MIUI 11 + Nova): opening an activity straight from the widget
+            // is silently blocked there, while broadcasts (⇄) work — so go through our receiver.
+            Intent o = new Intent(ctx, PowerWidget.class).setAction(ACTION_OPEN)
+                    .putExtra(MainActivity.EXTRA_DOM, dom);
+            openPi = PendingIntent.getBroadcast(ctx, 3000 + id, o,
+                    PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        } else {
+            openPi = PendingIntent.getActivity(ctx, 1000 + id, openIntent(ctx, dom),
+                    PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        }
+        v.setOnClickPendingIntent(R.id.w_root, openPi);
 
         Status s = Status.compute(sch, a, now);
         // Status colours are the same in light and dark theme, so fixed values are safe here.

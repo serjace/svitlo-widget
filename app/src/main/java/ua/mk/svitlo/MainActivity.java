@@ -197,7 +197,7 @@ public class MainActivity extends AppCompatActivity {
         refreshing = true;
         adapter.notifyDataSetChanged();
         new Thread(() -> {
-            Updater.tick(getApplicationContext(), true);
+            Updater.tick(getApplicationContext(), true, byUser);
             runOnUiThread(() -> {
                 refreshing = false;
                 render();
@@ -346,7 +346,7 @@ public class MainActivity extends AppCompatActivity {
         final View addrBox, cardNext, cardToday, cardTomorrow, mTomorrowMore;
         final MaterialButton btnAddFirst;
         final TextView addrName, addrFull, hTitle, hLine1, hLine2, mTodayLabel, mTomorrowLabel,
-                mTomorrowText, mUpdated;
+                mTomorrowText, mUpdated, mQueues;
         final MaterialCardView cardHero;
         final ImageView hIcon;
         final LinearLayout mNext;
@@ -377,6 +377,7 @@ public class MainActivity extends AppCompatActivity {
             mTomorrowGrid = v.findViewById(R.id.m_tomorrow_grid);
             mTomorrowMore = v.findViewById(R.id.m_tomorrow_more);
             mUpdated = v.findViewById(R.id.m_updated);
+            mQueues = v.findViewById(R.id.m_queues);
             ((TextView) v.findViewById(R.id.m_legend)).setText(legend());
         }
 
@@ -473,6 +474,9 @@ public class MainActivity extends AppCompatActivity {
             }
             mUpdated.setText(refreshing ? "Оновлення…" : updated);
             mUpdated.setVisibility(a == null ? View.GONE : View.VISIBLE);
+            // All queues of this address (re-read from the website every hour and on ⟳)
+            mQueues.setText(a == null ? "" : "Черги: " + a.queuesText());
+            mQueues.setVisibility(a == null ? View.GONE : View.VISIBLE);
         }
     }
 }

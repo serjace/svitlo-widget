@@ -38,10 +38,15 @@ final class Updater {
     }
 
     static void tick(Context ctx, boolean fetch) {
+        tick(ctx, fetch, false);
+    }
+
+    /** @param queuesNow also re-read every address's queues right now (⟳ in the app) */
+    static void tick(Context ctx, boolean fetch, boolean queuesNow) {
         Context app = ctx.getApplicationContext();
         synchronized (LOCK) {
             Store st = new Store(app);
-            if (fetch && fetchAll(st) && System.currentTimeMillis() - st.updateCheckedAt() > 3600 * 1000L) {
+            if (fetch && fetchAll(st, queuesNow) && System.currentTimeMillis() - st.updateCheckedAt() > 3600 * 1000L) {
                 AppUpdate.check(app, st);   // new version of the app on GitHub? (every hour)
             }
             Schedule sch = Schedule.load(st);
@@ -58,7 +63,7 @@ final class Updater {
         if (l != null) new Handler(Looper.getMainLooper()).post(l);
     }
 
-    static boolean fetchAll(Store st) {
+    static boolean fetchAll(Store st, boolean queuesNow) {
         try {
             String ts = st.cache("ts");
             if (ts == null) ts = Api.get("/api/schedule/time-series");
@@ -78,12 +83,13 @@ final class Updater {
             return false;
         }
 
-        // Re-check which queues each address belongs to twice a day (they can be reassigned).
+        // Re-check which queues each address belongs to every hour (they can be reassigned),
+        // or right away when ⟳ is tapped. One small request per address.
         long now = System.currentTimeMillis();
         List<Address> list = st.addresses();
         boolean changed = false;
         for (Address a : list) {
-            if (now - a.queuesCheckedAt < 12L * 3600 * 1000) continue;
+            if (!queuesNow && now - a.queuesCheckedAt < 3600 * 1000L) continue;
             try {
                 JSONArray oq = Api.getArray("/api/addr/dom/" + a.queueSource() + "/outage-queue");
                 if (oq.length() > 0) a.applyQueues(oq);
