@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="?attr/selectableItemBackground"
@@ -7,9 +8,9 @@
     android:paddingStart="16dp"
     android:paddingTop="12dp"
     android:paddingEnd="4dp"
-    android:paddingBottom="2dp">
+    android:paddingBottom="8dp">
 
-    <!-- Name and address on top, full width, so big fonts have room -->
+    <!-- Name and address; edit / delete stacked on the right so the text keeps its width -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -28,7 +29,7 @@
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="12dp"
+            android:layout_marginEnd="4dp"
             android:layout_weight="1"
             android:orientation="vertical">
 
@@ -47,6 +48,30 @@
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="15sp" />
         </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="48dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <ImageButton
+                android:id="@+id/a_edit"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Редагувати назву й адресу"
+                android:src="@drawable/ic_edit"
+                android:tint="?attr/colorOnSurfaceVariant" />
+
+            <ImageButton
+                android:id="@+id/a_delete"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Видалити адресу"
+                android:src="@drawable/ic_delete"
+                android:tint="?attr/colorOnSurfaceVariant" />
+        </LinearLayout>
     </LinearLayout>
 
     <!-- Notifications on/off: own line, so the word never gets squeezed -->
@@ -55,53 +80,36 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="34dp"
-        android:layout_marginEnd="12dp"
+        android:layout_marginEnd="8dp"
         android:minHeight="48dp"
         android:text="Сповіщення"
         android:textColor="?attr/colorOnSurfaceVariant"
         android:textSize="16sp" />
 
-    <!-- Actions underneath, on the right -->
+    <!-- Order: only when there are several addresses -->
     <LinearLayout
+        android:id="@+id/a_order"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="end|center_vertical"
+        android:layout_marginStart="26dp"
         android:orientation="horizontal">
 
-        <ImageButton
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/a_up"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Перемістити вище"
-            android:src="@drawable/ic_arrow_up"
-            android:tint="?attr/colorOnSurfaceVariant" />
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Вище"
+            android:textSize="16sp"
+            app:icon="@drawable/ic_arrow_up" />
 
-        <ImageButton
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/a_down"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Перемістити нижче"
-            android:src="@drawable/ic_arrow_down"
-            android:tint="?attr/colorOnSurfaceVariant" />
-
-        <ImageButton
-            android:id="@+id/a_edit"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Редагувати назву й адресу"
-            android:src="@drawable/ic_edit"
-            android:tint="?attr/colorOnSurfaceVariant" />
-
-        <ImageButton
-            android:id="@+id/a_delete"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Видалити адресу"
-            android:src="@drawable/ic_delete"
-            android:tint="?attr/colorOnSurfaceVariant" />
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Нижче"
+            android:textSize="16sp"
+            app:icon="@drawable/ic_arrow_down" />
     </LinearLayout>
 </LinearLayout>

@@ -235,8 +235,9 @@ public class SettingsActivity extends AppCompatActivity {
             final int pos = i;
             View up = row.findViewById(R.id.a_up);
             View down = row.findViewById(R.id.a_down);
-            up.setVisibility(i > 0 ? View.VISIBLE : View.INVISIBLE);
-            down.setVisibility(i < list.size() - 1 ? View.VISIBLE : View.INVISIBLE);
+            row.findViewById(R.id.a_order).setVisibility(list.size() > 1 ? View.VISIBLE : View.GONE);
+            up.setVisibility(i > 0 ? View.VISIBLE : View.GONE);
+            down.setVisibility(i < list.size() - 1 ? View.VISIBLE : View.GONE);
             up.setOnClickListener(v -> move(pos, pos - 1));
             down.setOnClickListener(v -> move(pos, pos + 1));
 
