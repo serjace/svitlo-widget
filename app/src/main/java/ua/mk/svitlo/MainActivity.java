@@ -109,10 +109,6 @@ public class MainActivity extends AppCompatActivity {
                 refresh(true);
                 return true;
             }
-            if (item.getItemId() == R.id.action_share) {
-                SettingsActivity.share(this);
-                return true;
-            }
             if (item.getItemId() == R.id.action_settings) {
                 startActivity(new Intent(this, SettingsActivity.class));
                 return true;
@@ -172,7 +168,8 @@ public class MainActivity extends AppCompatActivity {
         Updater.setListener(this::render);
         render();
         Store st = new Store(this);
-        if (!st.addresses().isEmpty() && System.currentTimeMillis() - st.fetchedAt() > 5 * 60 * 1000L) {
+        // fresh data every time the app is opened (icon, widget, or back from recent apps)
+        if (!st.addresses().isEmpty() && System.currentTimeMillis() - st.fetchedAt() > 20 * 1000L) {
             refresh();
         }
         // look for a new app version every time the app is opened

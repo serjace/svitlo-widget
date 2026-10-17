@@ -9,7 +9,12 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Decides which notifications to send. Called on every update.
@@ -38,13 +43,32 @@ final class Alerts {
             boolean first = ns.length() == 0;   // just added: remember the state, don't notify
             boolean on = a.notify;
             Status cur = Status.compute(sch, a, now);
+            long nowSec = now.toEpochSecond();
+            long endOfToday = Status.timeOf(today, 48).toEpochSecond();
+            int[] c = Status.combined(sch, a, today);
+
+            // Notifications shown for this address: {key: no longer true after (epoch s), 0 = until replaced}.
+            // Outdated ones are removed, so only what is still true stays in the shade.
+            JSONObject live = ns.optJSONObject("live");
+            if (live == null) live = new JSONObject();
+            Set<String> starts = outageStarts(c, today);
+            for (String k : keysOf(live)) {
+                long until = live.optLong(k);
+                boolean stale = until > 0 && nowSec >= until;
+                // a warning for an outage that is no longer in the schedule
+                if (k.startsWith("pre:") && !starts.contains(k.substring(k.lastIndexOf(':') + 1))) stale = true;
+                if (stale) {
+                    Notifier.cancel(ctx, k);
+                    live.remove(k);
+                }
+            }
 
             // --- Emergency outages (ГАВ / СГАВ) ---
             boolean gav = a.gavId > 0 && sch.isEnabled(a.gavId);
             boolean sgav = a.sgavId > 0 && sch.isEnabled(a.sgavId);
             if (!first && on && st.flag(Store.F_EMERGENCY)) {
-                if (gav != ns.optBoolean("gav")) emergency(ctx, a, "ГАВ " + a.gavName, gav, cur);
-                if (sgav != ns.optBoolean("sgav")) emergency(ctx, a, "СГАВ " + a.sgavName, sgav, cur);
+                if (gav != ns.optBoolean("gav")) emergency(ctx, live, nowSec, a, "ГАВ " + a.gavName, gav, cur);
+                if (sgav != ns.optBoolean("sgav")) emergency(ctx, live, nowSec, a, "СГАВ " + a.sgavName, sgav, cur);
             }
             ns.put("gav", gav);
             ns.put("sgav", sgav);
@@ -62,7 +86,8 @@ final class Alerts {
                 String ht = Arrays.toString(t);
                 // Only changes from now until midnight matter; the past part is ignored
                 if (tell && old.has(kt) && changedFrom(old.optString(kt), t, ni)) {
-                    Notifier.show(ctx, Notifier.CH_SCHEDULE, "sch" + a.domId + kt,
+                    // same key as the earlier one for this day: the new text replaces the old
+                    show(ctx, live, endOfToday, Notifier.CH_SCHEDULE, "sch" + a.domId + kt,
                             a.name + ": графік на сьогодні змінився",
                             Status.restOfDay(t, ni), Status.color(Status.YELLOW));
                 }
@@ -74,11 +99,11 @@ final class Alerts {
                     String hmh = Arrays.toString(m);
                     String date = tomorrow.format(DateTimeFormatter.ofPattern("dd.MM"));
                     if (tell && !old.has(km)) {
-                        Notifier.show(ctx, Notifier.CH_SCHEDULE, "sch" + a.domId + km,
+                        show(ctx, live, endOfToday + 86400, Notifier.CH_SCHEDULE, "sch" + a.domId + km,
                                 a.name + ": графік на завтра, " + date,
                                 Status.daySummary(m), Status.color(Status.GREEN));
                     } else if (tell && !hmh.equals(old.optString(km))) {
-                        Notifier.show(ctx, Notifier.CH_SCHEDULE, "sch" + a.domId + km,
+                        show(ctx, live, endOfToday + 86400, Notifier.CH_SCHEDULE, "sch" + a.domId + km,
                                 a.name + ": змінився графік на завтра, " + date,
                                 Status.daySummary(m), Status.color(Status.YELLOW));
                     }
@@ -91,7 +116,6 @@ final class Alerts {
 
             // --- Before an outage / power should be back ---
             if (on && !first && a.gpvId > 0) {
-                int[] c = Status.combined(sch, a, today);
                 if (st.flag(Store.F_BEFORE)) {
                     int lead = st.lead();
                     for (int j = ni + 1; j < 96 && c[j] >= 0; j++) {
@@ -109,7 +133,8 @@ final class Alerts {
                                         text += ", потім можливі відключення до "
                                                 + Status.hm(Status.runEnd(c, end, Schedule.PROBABLY, Schedule.PROBABLY));
                                     }
-                                    Notifier.show(ctx, Notifier.CH_OUTAGE, key,
+                                    // gone once the outage starts (or if it leaves the schedule)
+                                    show(ctx, live, start.toEpochSecond(), Notifier.CH_OUTAGE, key,
                                             a.name + ": через " + mins + " хв вимкнуть світло",
                                             text + ".", Status.color(Status.RED));
                                 }
@@ -125,7 +150,12 @@ final class Alerts {
                         String key = "ret:" + a.domId + ":" + end.toEpochSecond();
                         if (!st.wasSent(key)) {
                             st.markSent(key);
-                            Notifier.show(ctx, Notifier.CH_OUTAGE, key,
+                            // gone when the next outage starts
+                            int off = ni;
+                            while (off < 96 && c[off] >= 0 && c[off] < Schedule.OFF) off++;
+                            long until = off < 96 && c[off] >= 0
+                                    ? Status.timeOf(today, off).toEpochSecond() : nowSec + 6 * 3600;
+                            show(ctx, live, until, Notifier.CH_OUTAGE, key,
                                     a.name + ": світло має зʼявитися",
                                     "За графіком відключення закінчилось о " + Status.hm(ni) + ".\n"
                                             + "Зараз: " + nowText(cur),
@@ -135,6 +165,15 @@ final class Alerts {
                 }
             }
 
+            if (gav || sgav) {   // an emergency outage: "light should be back" is no longer true
+                for (String k : keysOf(live)) {
+                    if (k.startsWith("ret:")) {
+                        Notifier.cancel(ctx, k);
+                        live.remove(k);
+                    }
+                }
+            }
+            ns.put("live", live);
             st.saveNotifyState(a.domId, ns);
         }
     }
@@ -153,17 +192,44 @@ final class Alerts {
         return false;
     }
 
-    private static void emergency(Context ctx, Address a, String queue, boolean started, Status cur) {
+    private static void emergency(Context ctx, JSONObject live, long nowSec, Address a, String queue,
+                                  boolean started, Status cur) throws JSONException {
+        // One key per queue: "cancelled" replaces "started" (and the other way round)
+        String key = "em:" + a.domId + ":" + queue;
         if (started) {
-            Notifier.show(ctx, Notifier.CH_OUTAGE, "em:" + a.domId + queue + System.currentTimeMillis(),
+            show(ctx, live, 0, Notifier.CH_OUTAGE, key,
                     a.name + ": аварійне відключення",
                     "Діє " + queue + ". Світла немає, час повернення невідомий.",
                     Status.color(Status.RED));
         } else {
-            Notifier.show(ctx, Notifier.CH_OUTAGE, "em:" + a.domId + queue + System.currentTimeMillis(),
+            show(ctx, live, nowSec + 3 * 3600, Notifier.CH_OUTAGE, key,
                     a.name + ": аварійне відключення скасовано",
                     queue + " більше не діє.\nЗараз: " + nowText(cur),
                     Status.color(Status.GREEN));
         }
+    }
+
+    /** Shows a notification and remembers until when it stays true. */
+    private static void show(Context ctx, JSONObject live, long untilSec, String channel, String key,
+                             String title, String text, int color) throws JSONException {
+        Notifier.show(ctx, channel, key, title, text, color);
+        live.put(key, untilSec);
+    }
+
+    private static List<String> keysOf(JSONObject o) {
+        List<String> r = new ArrayList<>();
+        for (Iterator<String> it = o.keys(); it.hasNext(); ) r.add(it.next());
+        return r;
+    }
+
+    /** Start times (epoch seconds, as text) of the outages in today + tomorrow. */
+    private static Set<String> outageStarts(int[] c, LocalDate today) {
+        Set<String> r = new HashSet<>();
+        for (int j = 1; j < c.length; j++) {
+            if (c[j] >= Schedule.OFF && c[j - 1] < Schedule.OFF) {
+                r.add(String.valueOf(Status.timeOf(today, j).toEpochSecond()));
+            }
+        }
+        return r;
     }
 }

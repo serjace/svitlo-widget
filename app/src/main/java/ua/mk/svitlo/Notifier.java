@@ -63,6 +63,12 @@ final class Notifier {
                 "Відкрийте застосунок і спробуйте ще раз", 0xFFD32F2F);
     }
 
+    /** Removes a notification that is no longer true. */
+    static void cancel(Context ctx, String key) {
+        NotificationManager nm = ctx.getSystemService(NotificationManager.class);
+        if (nm != null) nm.cancel(key.hashCode());
+    }
+
     static void cancelUpdate(Context ctx) {
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);
         if (nm != null) nm.cancel(KEY_UPDATE.hashCode());

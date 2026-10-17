@@ -133,39 +133,50 @@
                         android:text="Перед відключенням"
                         android:textSize="18sp" />
 
-                    <com.google.android.material.chip.ChipGroup
-                        android:id="@+id/cg_lead"
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                        android:id="@+id/tg_lead"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
                         app:selectionRequired="true"
                         app:singleSelection="true">
 
-                        <com.google.android.material.chip.Chip
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/chip_10"
-                            style="@style/Widget.Material3.Chip.Filter"
-                            android:layout_width="wrap_content"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:minHeight="52dp"
+                            android:paddingStart="4dp"
+                            android:paddingEnd="4dp"
                             android:text="за 10 хв"
                             android:textSize="16sp" />
 
-                        <com.google.android.material.chip.Chip
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/chip_15"
-                            style="@style/Widget.Material3.Chip.Filter"
-                            android:layout_width="wrap_content"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:minHeight="52dp"
+                            android:paddingStart="4dp"
+                            android:paddingEnd="4dp"
                             android:text="за 15 хв"
                             android:textSize="16sp" />
 
-                        <com.google.android.material.chip.Chip
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/chip_30"
-                            style="@style/Widget.Material3.Chip.Filter"
-                            android:layout_width="wrap_content"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:minHeight="52dp"
+                            android:paddingStart="4dp"
+                            android:paddingEnd="4dp"
                             android:text="за 30 хв"
                             android:textSize="16sp" />
-
-
-                    </com.google.android.material.chip.ChipGroup>
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
 
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/sw_return"
@@ -192,17 +203,68 @@
                         android:textSize="18sp" />
 
                     <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="Перевіряти графік на сайті"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="18sp" />
+
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                        android:id="@+id/tg_interval"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        app:selectionRequired="true"
+                        app:singleSelection="true">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_int_10"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:minHeight="52dp"
+                            android:paddingStart="4dp"
+                            android:paddingEnd="4dp"
+                            android:text="кожні 10 хв"
+                            android:textSize="16sp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_int_5"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:minHeight="52dp"
+                            android:paddingStart="4dp"
+                            android:paddingEnd="4dp"
+                            android:text="кожні 5 хв"
+                            android:textSize="16sp" />
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Поки екран увімкнений. Також дані оновлюються щоразу, коли ви відкриваєте застосунок."
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="15sp" />
+
+                    <TextView
                         android:id="@+id/m_battery_hint"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="16dp"
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:textSize="15sp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_battery"
                         style="@style/Widget.Material3.Button.TextButton"
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
+                        android:gravity="start|center_vertical"
+                        android:paddingStart="0dp"
                         android:layout_height="wrap_content"
                         android:text="Дозволити роботу у фоні"
                         android:textSize="16sp" />
@@ -210,7 +272,9 @@
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_autostart"
                         style="@style/Widget.Material3.Button.TextButton"
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
+                        android:gravity="start|center_vertical"
+                        android:paddingStart="0dp"
                         android:layout_height="wrap_content"
                         android:text="Xiaomi: увімкнути «Автозапуск»"
                         android:textSize="16sp"
@@ -219,7 +283,9 @@
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_miui_popup"
                         style="@style/Widget.Material3.Button.TextButton"
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
+                        android:gravity="start|center_vertical"
+                        android:paddingStart="0dp"
                         android:layout_height="wrap_content"
                         android:text="Xiaomi: дозволити відкриття з віджета"
                         android:textSize="16sp"
@@ -257,60 +323,77 @@
                         android:textColor="?attr/colorOnSurface"
                         android:textSize="18sp" />
 
-                    <com.google.android.material.chip.ChipGroup
-                        android:id="@+id/cg_wscale"
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                        android:id="@+id/tg_wscale"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
+                        android:layout_marginTop="8dp"
                         app:selectionRequired="true"
                         app:singleSelection="true">
 
-                        <com.google.android.material.chip.Chip
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/chip_ws_s"
-                            style="@style/Widget.Material3.Chip.Filter"
-                            android:layout_width="wrap_content"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:text="Менший"
-                            android:textSize="16sp" />
+                            android:layout_weight="1"
+                            android:minHeight="52dp"
+                            android:paddingStart="4dp"
+                            android:paddingEnd="4dp"
+                            android:text="A"
+                            android:textSize="15sp" />
 
-                        <com.google.android.material.chip.Chip
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/chip_ws_m"
-                            style="@style/Widget.Material3.Chip.Filter"
-                            android:layout_width="wrap_content"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:text="Звичайний"
-                            android:textSize="16sp" />
+                            android:layout_weight="1"
+                            android:minHeight="52dp"
+                            android:paddingStart="4dp"
+                            android:paddingEnd="4dp"
+                            android:text="A"
+                            android:textSize="19sp" />
 
-                        <com.google.android.material.chip.Chip
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/chip_ws_l"
-                            style="@style/Widget.Material3.Chip.Filter"
-                            android:layout_width="wrap_content"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:text="Більший"
-                            android:textSize="16sp" />
+                            android:layout_weight="1"
+                            android:minHeight="52dp"
+                            android:paddingStart="4dp"
+                            android:paddingEnd="4dp"
+                            android:text="A"
+                            android:textSize="23sp" />
 
-                        <com.google.android.material.chip.Chip
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/chip_ws_xl"
-                            style="@style/Widget.Material3.Chip.Filter"
-                            android:layout_width="wrap_content"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:text="Найбільший"
-                            android:textSize="16sp" />
-                    </com.google.android.material.chip.ChipGroup>
+                            android:layout_weight="1"
+                            android:minHeight="52dp"
+                            android:paddingStart="4dp"
+                            android:paddingEnd="4dp"
+                            android:text="A"
+                            android:textSize="27sp" />
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                    <TextView
+                        android:id="@+id/m_wscale"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:gravity="center"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="15sp" />
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:text="Утримуйте палець на порожньому місці головного екрана → «Віджети» → «Світло». Є два розміри: великий (4×2) і квадратний (2×2). Новий віджет показує першу адресу зі списку вище.
-
-Колір віджета показує статус: зелений — світло є, жовтий — можливе відключення, червоний — світла немає.
-
-Якщо розтягнути великий віджет, він покаже більше найближчих годин.
-
-Щоб перемкнути адресу на віджеті (Дім ⇄ Робота), торкніться значка ⇄ вгорі віджета. Торкання решти віджета відкриває застосунок на цій адресі.
-
-Дані на віджеті оновлюються самі приблизно кожні 10 хвилин."
+                        android:text="Утримуйте палець на порожньому місці головного екрана → «Віджети» → «Світло». Є два розміри: великий (4×2) і квадратний (2×2). Новий віджет показує першу адресу зі списку вище.&#10;&#10;Колір віджета показує статус: зелений — світло є, жовтий — можливе відключення, червоний — світла немає.&#10;&#10;Якщо розтягнути великий віджет, він покаже більше найближчих годин.&#10;&#10;Щоб перемкнути адресу на віджеті (Дім ⇄ Робота), торкніться значка ⇄ вгорі віджета. Торкання решти віджета відкриває застосунок на цій адресі.&#10;&#10;Дані на віджеті оновлюються самі приблизно кожні 10 хвилин."
                         android:textColor="?attr/colorOnSurface"
                         android:textSize="16sp" />
                 </LinearLayout>

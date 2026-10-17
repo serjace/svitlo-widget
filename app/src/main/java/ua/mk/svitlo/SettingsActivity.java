@@ -19,7 +19,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.divider.MaterialDivider;
@@ -102,34 +102,50 @@ public class SettingsActivity extends AppCompatActivity {
         bindSwitch(R.id.sw_schedule, Store.F_SCHEDULE, st);
 
         // Widget text size
-        ChipGroup ws = findViewById(R.id.cg_wscale);
+        MaterialButtonToggleGroup ws = findViewById(R.id.tg_wscale);
         int wsChecked = R.id.chip_ws_m;
         for (int i = 0; i < SCALES.length; i++) if (Math.abs(SCALES[i] - st.widgetScale()) < 0.01f) wsChecked = SCALE_CHIPS[i];
         ws.check(wsChecked);
-        ws.setOnCheckedStateChangeListener((group, ids) -> {
-            if (ids.isEmpty()) return;
+        showScaleName(wsChecked);
+        ws.addOnButtonCheckedListener((group, id, isChecked) -> {
+            if (!isChecked) return;
+            showScaleName(id);
             for (int i = 0; i < SCALE_CHIPS.length; i++) {
-                if (SCALE_CHIPS[i] == ids.get(0)) {
+                if (SCALE_CHIPS[i] == id && Math.abs(new Store(this).widgetScale() - SCALES[i]) > 0.01f) {
                     new Store(this).setWidgetScale(SCALES[i]);
                     runTick();
                 }
             }
         });
 
-        ChipGroup leads = findViewById(R.id.cg_lead);
-        int checked = R.id.chip_30;
+        // Warning lead time
+        MaterialButtonToggleGroup leads = findViewById(R.id.tg_lead);
+        int checked = R.id.chip_10;
         for (int i = 0; i < LEADS.length; i++) if (LEADS[i] == st.lead()) checked = CHIPS[i];
         leads.check(checked);
-        leads.setOnCheckedStateChangeListener((group, ids) -> {
-            if (ids.isEmpty()) return;
+        leads.addOnButtonCheckedListener((group, id, isChecked) -> {
+            if (!isChecked) return;
             for (int i = 0; i < CHIPS.length; i++) {
-                if (CHIPS[i] == ids.get(0)) {
+                if (CHIPS[i] == id) {
                     Store s = new Store(this);
                     if (s.lead() != LEADS[i]) {
                         s.setLead(LEADS[i]);
                         runTick();
                     }
                 }
+            }
+        });
+
+        // How often to check the website: 10 (default) or 5 minutes
+        MaterialButtonToggleGroup interval = findViewById(R.id.tg_interval);
+        interval.check(st.interval() == 5 ? R.id.btn_int_5 : R.id.btn_int_10);
+        interval.addOnButtonCheckedListener((group, id, isChecked) -> {
+            if (!isChecked) return;
+            int m = id == R.id.btn_int_5 ? 5 : 10;
+            Store s = new Store(this);
+            if (s.interval() != m) {
+                s.setInterval(m);
+                runTick();   // plans the next check with the new interval
             }
         });
     }
@@ -246,6 +262,13 @@ public class SettingsActivity extends AppCompatActivity {
                 runTick();
             });
             addrList.addView(row);
+        }
+    }
+
+    private void showScaleName(int id) {
+        String[] names = {"Менший", "Звичайний", "Більший", "Найбільший"};
+        for (int i = 0; i < SCALE_CHIPS.length; i++) {
+            if (SCALE_CHIPS[i] == id) ((TextView) findViewById(R.id.m_wscale)).setText(names[i]);
         }
     }
 
