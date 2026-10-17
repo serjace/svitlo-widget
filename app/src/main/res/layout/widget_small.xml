@@ -1,49 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/w_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_bg"
-    android:gravity="center_vertical"
-    android:orientation="horizontal"
-    android:paddingStart="12dp"
-    android:paddingEnd="12dp">
+    android:background="@drawable/wbg_on"
+    android:padding="16dp">
 
     <ImageView
         android:id="@+id/w_icon"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:background="@drawable/circle_on"
-        android:contentDescription="Статус"
-        android:padding="7dp"
+        android:layout_width="38dp"
+        android:layout_height="38dp"
+        android:layout_gravity="top|start"
+        android:contentDescription="@null"
         android:src="@drawable/ic_status_on" />
 
     <LinearLayout
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="10dp"
-        android:layout_weight="1"
+        android:layout_gravity="bottom|start"
         android:orientation="vertical">
 
         <TextView
             android:id="@+id/w_status"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ellipsize="end"
             android:fontFamily="sans-serif-medium"
-            android:maxLines="1"
+            android:lineSpacingMultiplier="0.95"
+            android:maxLines="2"
             android:text="Світло є"
-            android:textColor="@color/widget_on"
-            android:textSize="15sp" />
+            android:textColor="#FFFFFFFF"
+            android:textSize="22sp" />
 
         <TextView
             android:id="@+id/w_detail"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="вимкнуть о 14:00"
-            android:textColor="@color/widget_sub"
-            android:textSize="12sp" />
+            android:text="до 14:00"
+            android:textColor="#FFFFFFFF"
+            android:textSize="18sp" />
     </LinearLayout>
-</LinearLayout>
+</FrameLayout>

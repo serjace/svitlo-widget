@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_share"
+        android:icon="@drawable/ic_share"
+        android:title="Поділитися з рідними"
+        app:iconTint="?attr/colorOnSurfaceVariant"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_settings"
+        android:icon="@drawable/ic_settings"
+        android:title="Налаштування"
+        app:iconTint="?attr/colorOnSurfaceVariant"
+        app:showAsAction="always" />
+</menu>

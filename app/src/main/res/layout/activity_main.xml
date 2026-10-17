@@ -10,6 +10,7 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
+        app:menu="@menu/main_menu"
         app:title="Світло"
         app:titleTextAppearance="?attr/textAppearanceHeadlineSmall" />
 
@@ -23,9 +24,25 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingStart="16dp"
-            android:paddingTop="4dp"
             android:paddingEnd="16dp"
             android:paddingBottom="24dp">
+
+            <!-- Address switcher (only when there are 2+ addresses) -->
+            <HorizontalScrollView
+                android:id="@+id/addr_scroll"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:scrollbars="none">
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/cg_addresses"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:selectionRequired="true"
+                    app:singleLine="true"
+                    app:singleSelection="true" />
+            </HorizontalScrollView>
 
             <!-- New version banner -->
             <com.google.android.material.card.MaterialCardView
@@ -34,39 +51,105 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
-                android:visibility="gone">
+                android:visibility="gone"
+                app:cardCornerRadius="20dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="16dp"
-                    android:paddingTop="8dp"
-                    android:paddingEnd="8dp"
-                    android:paddingBottom="8dp">
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
                     <TextView
                         android:id="@+id/tv_update"
-                        android:layout_width="0dp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textColor="?attr/colorOnSurface" />
+                        android:gravity="center"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="18sp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_update"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Оновити" />
+                        android:layout_marginTop="8dp"
+                        android:text="Оновити застосунок"
+                        android:textSize="17sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Status card -->
+            <!-- Big status -->
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_hero"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="28dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical"
+                    android:paddingStart="20dp"
+                    android:paddingTop="22dp"
+                    android:paddingEnd="20dp"
+                    android:paddingBottom="22dp">
+
+                    <ImageView
+                        android:id="@+id/h_icon"
+                        android:layout_width="60dp"
+                        android:layout_height="60dp"
+                        android:contentDescription="@null" />
+
+                    <TextView
+                        android:id="@+id/h_title"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:fontFamily="sans-serif-medium"
+                        android:gravity="center"
+                        android:textSize="36sp" />
+
+                    <TextView
+                        android:id="@+id/h_line1"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:fontFamily="sans-serif-medium"
+                        android:gravity="center"
+                        android:textSize="24sp" />
+
+                    <TextView
+                        android:id="@+id/h_line2"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:gravity="center"
+                        android:textSize="18sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_add_first"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:text="Додати адресу"
+                        android:textSize="18sp"
+                        android:visibility="gone"
+                        app:icon="@drawable/ic_add" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Coming hours -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_next"
                 style="?attr/materialCardViewFilledStyle"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                app:cardCornerRadius="24dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -75,395 +158,136 @@
                     android:padding="16dp">
 
                     <TextView
-                        android:id="@+id/m_address"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textColor="?attr/colorOnSurfaceVariant" />
+                        android:layout_marginBottom="4dp"
+                        android:fontFamily="sans-serif-medium"
+                        android:gravity="center"
+                        android:text="Найближчі години"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="21sp" />
 
                     <LinearLayout
+                        android:id="@+id/m_next"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <ImageView
-                            android:id="@+id/m_icon"
-                            android:layout_width="52dp"
-                            android:layout_height="52dp"
-                            android:contentDescription="Статус"
-                            android:padding="12dp" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="14dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:id="@+id/m_status"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:textAppearance="?attr/textAppearanceHeadlineSmall"
-                                android:textColor="?attr/colorOnSurface" />
-
-                            <TextView
-                                android:id="@+id/m_detail"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:textAppearance="?attr/textAppearanceBodyMedium"
-                                android:textColor="?attr/colorOnSurfaceVariant" />
-                        </LinearLayout>
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:id="@+id/m_schedule"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:id="@+id/m_today_label"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="20dp"
-                            android:layout_marginBottom="6dp"
-                            android:textAppearance="?attr/textAppearanceLabelLarge"
-                            android:textColor="?attr/colorOnSurfaceVariant" />
-
-                        <ua.mk.svitlo.HourGridView
-                            android:id="@+id/m_today_grid"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content" />
-
-                        <TextView
-                            android:id="@+id/m_legend"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="6dp"
-                            android:textAppearance="?attr/textAppearanceBodySmall" />
-
-                        <TextView
-                            android:id="@+id/m_next_label"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="16dp"
-                            android:layout_marginBottom="2dp"
-                            android:text="Далі"
-                            android:textAppearance="?attr/textAppearanceLabelLarge"
-                            android:textColor="?attr/colorOnSurfaceVariant" />
-
-                        <LinearLayout
-                            android:id="@+id/m_next"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical" />
-
-                        <TextView
-                            android:id="@+id/m_tomorrow_label"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="20dp"
-                            android:layout_marginBottom="6dp"
-                            android:textAppearance="?attr/textAppearanceLabelLarge"
-                            android:textColor="?attr/colorOnSurfaceVariant" />
-
-                        <ua.mk.svitlo.HourGridView
-                            android:id="@+id/m_tomorrow_grid"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content" />
-
-                        <TextView
-                            android:id="@+id/m_tomorrow_text"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="6dp"
-                            android:textAppearance="?attr/textAppearanceBodyMedium"
-                            android:textColor="?attr/colorOnSurface" />
-
-                        <TextView
-                            android:id="@+id/m_queues"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="16dp"
-                            android:textAppearance="?attr/textAppearanceBodySmall"
-                            android:textColor="?attr/colorOnSurfaceVariant" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <TextView
-                            android:id="@+id/m_updated"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:textAppearance="?attr/textAppearanceBodySmall"
-                            android:textColor="?attr/colorOnSurfaceVariant" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btn_refresh"
-                            style="@style/Widget.Material3.Button.TonalButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Оновити"
-                            app:icon="@drawable/ic_refresh_app" />
-                    </LinearLayout>
+                        android:orientation="vertical" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Addresses -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="Ваші адреси"
-                android:textAppearance="?attr/textAppearanceTitleMedium"
-                android:textColor="?attr/colorOnSurface" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:layout_marginBottom="8dp"
-                android:text="Торкніться адреси, щоб показати її вгорі. Перемикач — сповіщення для цієї адреси."
-                android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="?attr/colorOnSurfaceVariant" />
-
+            <!-- Today -->
             <com.google.android.material.card.MaterialCardView
-                style="?attr/materialCardViewOutlinedStyle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-
-                <LinearLayout
-                    android:id="@+id/addr_list"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical" />
-            </com.google.android.material.card.MaterialCardView>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_add"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Додати адресу"
-                app:icon="@drawable/ic_add" />
-
-            <!-- Data refresh -->
-            <TextView
+                android:id="@+id/card_today"
+                style="?attr/materialCardViewFilledStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="Перевіряти графік"
-                android:textAppearance="?attr/textAppearanceTitleMedium"
-                android:textColor="?attr/colorOnSurface" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="Як часто завантажувати свіжі дані з сайту."
-                android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="?attr/colorOnSurfaceVariant" />
-
-            <com.google.android.material.chip.ChipGroup
-                android:id="@+id/cg_interval"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:selectionRequired="true"
-                app:singleSelection="true">
-
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chip_i5"
-                    style="@style/Widget.Material3.Chip.Filter"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="кожні 5 хв" />
-
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chip_i10"
-                    style="@style/Widget.Material3.Chip.Filter"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="кожні 10 хв" />
-
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chip_i15"
-                    style="@style/Widget.Material3.Chip.Filter"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="кожні 15 хв" />
-
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chip_i30"
-                    style="@style/Widget.Material3.Chip.Filter"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="кожні 30 хв" />
-            </com.google.android.material.chip.ChipGroup>
-
-            <!-- Notifications -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="8dp"
-                android:text="Сповіщення"
-                android:textAppearance="?attr/textAppearanceTitleMedium"
-                android:textColor="?attr/colorOnSurface" />
-
-            <com.google.android.material.card.MaterialCardView
-                style="?attr/materialCardViewOutlinedStyle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_marginTop="12dp"
+                app:cardCornerRadius="24dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:paddingStart="16dp"
-                    android:paddingTop="8dp"
-                    android:paddingEnd="16dp"
-                    android:paddingBottom="12dp">
-
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/sw_before"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:minHeight="48dp"
-                        android:text="Перед відключенням"
-                        android:textAppearance="?attr/textAppearanceBodyLarge" />
-
-                    <com.google.android.material.chip.ChipGroup
-                        android:id="@+id/cg_lead"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        app:selectionRequired="true"
-                        app:singleSelection="true">
-
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chip_10"
-                            style="@style/Widget.Material3.Chip.Filter"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="за 10 хв" />
-
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chip_15"
-                            style="@style/Widget.Material3.Chip.Filter"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="за 15 хв" />
-
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chip_30"
-                            style="@style/Widget.Material3.Chip.Filter"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="за 30 хв" />
-
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chip_60"
-                            style="@style/Widget.Material3.Chip.Filter"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="за 1 год" />
-                    </com.google.android.material.chip.ChipGroup>
-
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/sw_return"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:minHeight="48dp"
-                        android:text="Коли має зʼявитися світло"
-                        android:textAppearance="?attr/textAppearanceBodyLarge" />
-
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/sw_emergency"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:minHeight="48dp"
-                        android:text="Аварійні відключення (ГАВ, СГАВ)"
-                        android:textAppearance="?attr/textAppearanceBodyLarge" />
-
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/sw_schedule"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:minHeight="48dp"
-                        android:text="Зміни графіка і графік на завтра"
-                        android:textAppearance="?attr/textAppearanceBodyLarge" />
+                    android:padding="16dp">
 
                     <TextView
-                        android:id="@+id/m_battery_hint"
+                        android:id="@+id/m_today_label"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:textAppearance="?attr/textAppearanceBodySmall"
-                        android:textColor="?attr/colorOnSurfaceVariant" />
+                        android:fontFamily="sans-serif-medium"
+                        android:gravity="center"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="21sp" />
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_battery"
-                        style="@style/Widget.Material3.Button.TextButton"
-                        android:layout_width="wrap_content"
+                    <ua.mk.svitlo.HourGridView
+                        android:id="@+id/m_today_grid"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Дозволити роботу у фоні" />
+                        android:layout_marginTop="10dp" />
+
+                    <TextView
+                        android:id="@+id/m_legend"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:gravity="center"
+                        android:lineSpacingExtra="4dp"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="16sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Help -->
-            <TextView
+            <!-- Tomorrow -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_tomorrow"
+                style="?attr/materialCardViewFilledStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="8dp"
-                android:text="Віджети"
-                android:textAppearance="?attr/textAppearanceTitleMedium"
-                android:textColor="?attr/colorOnSurface" />
+                android:layout_marginTop="12dp"
+                app:cardCornerRadius="24dp">
 
-            <com.google.android.material.card.MaterialCardView
-                style="?attr/materialCardViewOutlinedStyle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-
-                <TextView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="16dp"
-                    android:text="Утримуйте палець на порожньому місці головного екрана → «Віджети» → «Світло». Є два розміри: основний (4×2) і компактний (2×1).\n\nНа основному віджеті: ⇄ — інша адреса, ⟳ — оновити. Торкніться віджета, щоб відкрити застосунок."
-                    android:textAppearance="?attr/textAppearanceBodyMedium"
-                    android:textColor="?attr/colorOnSurface" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:id="@+id/m_tomorrow_label"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:gravity="center"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="21sp" />
+
+                    <TextView
+                        android:id="@+id/m_tomorrow_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center"
+                        android:lineSpacingExtra="2dp"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="20sp" />
+
+                    <ua.mk.svitlo.HourGridView
+                        android:id="@+id/m_tomorrow_grid"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- Footer -->
             <TextView
+                android:id="@+id/m_queues"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Дані: off.energy.mk.ua (АТ «Миколаївобленерго»). Застосунок показує офіційний графік і не може перевірити, чи справді є світло у вашому будинку."
-                android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="?attr/colorOnSurfaceVariant" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_site"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Відкрити сайт" />
+                android:gravity="center"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="15sp" />
 
             <TextView
-                android:id="@+id/m_version"
+                android:id="@+id/m_updated"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="?attr/colorOnSurfaceVariant" />
+                android:layout_marginTop="6dp"
+                android:gravity="center"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="16sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_refresh"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="6dp"
+                android:text="Оновити"
+                android:textSize="17sp"
+                app:icon="@drawable/ic_refresh_app" />
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 </LinearLayout>

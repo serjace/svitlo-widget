@@ -10,7 +10,8 @@ public class AlarmReceiver extends BroadcastReceiver {
     public void onReceive(Context ctx, Intent intent) {
         final PendingResult pr = goAsync();
         final Context app = ctx.getApplicationContext();
-        final boolean isTick = Updater.ACTION_TICK.equals(intent.getAction());
+        final boolean isTick = Updater.ACTION_TICK.equals(intent.getAction())
+                || Updater.ACTION_CHECK.equals(intent.getAction());
         new Thread(() -> {
             try {
                 Updater.tick(app, false);

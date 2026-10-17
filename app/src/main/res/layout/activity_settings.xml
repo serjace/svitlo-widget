@@ -1,0 +1,327 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        app:navigationContentDescription="Назад"
+        app:navigationIcon="@drawable/ic_arrow_back"
+        app:title="Налаштування" />
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="24dp">
+
+            <!-- Addresses -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:text="Ваші адреси"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="20sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="8dp"
+                android:text="Перемикач — сповіщення для цієї адреси."
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="15sp" />
+
+            <com.google.android.material.card.MaterialCardView
+                style="?attr/materialCardViewOutlinedStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="20dp">
+
+                <LinearLayout
+                    android:id="@+id/addr_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_add"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Додати адресу"
+                android:textSize="17sp"
+                app:icon="@drawable/ic_add" />
+
+            <!-- Share -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="Поділитися з рідними"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="20sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Надішліть посилання на застосунок і коротку інструкцію у Viber, Telegram чи SMS."
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="15sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_share"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Поділитися"
+                android:textSize="17sp"
+                app:icon="@drawable/ic_share" />
+
+            <!-- Data refresh -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="Перевіряти графік"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="20sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Коли телефон увімкнений. Поки екран вимкнений, застосунок перевіряє рідше (приблизно раз на 15 хв), щоб берегти батарею."
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="15sp" />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/cg_interval"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_i5"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="кожні 5 хв"
+                    android:textSize="16sp" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_i10"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="кожні 10 хв"
+                    android:textSize="16sp" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_i15"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="кожні 15 хв"
+                    android:textSize="16sp" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_i30"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="кожні 30 хв"
+                    android:textSize="16sp" />
+            </com.google.android.material.chip.ChipGroup>
+
+            <!-- Notifications -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="8dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="Сповіщення"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="20sp" />
+
+            <com.google.android.material.card.MaterialCardView
+                style="?attr/materialCardViewOutlinedStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="20dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingStart="16dp"
+                    android:paddingTop="8dp"
+                    android:paddingEnd="16dp"
+                    android:paddingBottom="12dp">
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/sw_before"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="56dp"
+                        android:text="Перед відключенням"
+                        android:textSize="18sp" />
+
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/cg_lead"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:selectionRequired="true"
+                        app:singleSelection="true">
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_10"
+                            style="@style/Widget.Material3.Chip.Filter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="за 10 хв"
+                            android:textSize="16sp" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_15"
+                            style="@style/Widget.Material3.Chip.Filter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="за 15 хв"
+                            android:textSize="16sp" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_30"
+                            style="@style/Widget.Material3.Chip.Filter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="за 30 хв"
+                            android:textSize="16sp" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_60"
+                            style="@style/Widget.Material3.Chip.Filter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="за 1 год"
+                            android:textSize="16sp" />
+                    </com.google.android.material.chip.ChipGroup>
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/sw_return"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="56dp"
+                        android:text="Коли має зʼявитися світло"
+                        android:textSize="18sp" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/sw_emergency"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="56dp"
+                        android:text="Аварійні відключення (ГАВ, СГАВ)"
+                        android:textSize="18sp" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/sw_schedule"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="56dp"
+                        android:text="Зміни графіка і графік на завтра"
+                        android:textSize="18sp" />
+
+                    <TextView
+                        android:id="@+id/m_battery_hint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="15sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_battery"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Дозволити роботу у фоні"
+                        android:textSize="16sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Help -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="8dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="Віджети"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="20sp" />
+
+            <com.google.android.material.card.MaterialCardView
+                style="?attr/materialCardViewOutlinedStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="20dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="16dp"
+                    android:text="Утримуйте палець на порожньому місці головного екрана → «Віджети» → «Світло». Є два розміри: великий (4×2) і квадратний (2×2).\n\nКолір віджета показує статус: зелений — світло є, жовтий — можливе відключення, червоний — світла немає.\n\nНа великому віджеті: ⇄ — інша адреса, ⟳ — оновити."
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="16sp" />
+            </com.google.android.material.card.MaterialCardView>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:gravity="center"
+                android:text="Дані: off.energy.mk.ua (АТ «Миколаївобленерго»). Застосунок показує офіційний графік і не може перевірити, чи справді є світло у вашому будинку."
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="14sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_site"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:text="Відкрити сайт"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/m_version"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="14sp" />
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+</LinearLayout>

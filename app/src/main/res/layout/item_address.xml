@@ -30,15 +30,16 @@
             android:id="@+id/a_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceTitleMedium"
-            android:textColor="?attr/colorOnSurface" />
+            android:fontFamily="sans-serif-medium"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="18sp" />
 
         <TextView
             android:id="@+id/a_sub"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceBodySmall"
-            android:textColor="?attr/colorOnSurfaceVariant" />
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="15sp" />
     </LinearLayout>
 
     <com.google.android.material.materialswitch.MaterialSwitch

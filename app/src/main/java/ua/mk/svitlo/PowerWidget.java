@@ -10,16 +10,14 @@ import android.view.View;
 import android.widget.RemoteViews;
 
 import java.time.ZonedDateTime;
+import java.util.List;
 
-/** The main 4×2 home-screen widget (SmallWidget reuses this for the 2×1 one). */
+/** The big 4×2 widget (SmallWidget reuses this for the square 2×2 one). Background colour = status. */
 public class PowerWidget extends AppWidgetProvider {
     static final String ACTION_SWITCH = "ua.mk.svitlo.SWITCH";
     static final String ACTION_REFRESH = "ua.mk.svitlo.REFRESH";
 
-    private static final int[] ROWS = {R.id.w_row1, R.id.w_row2, R.id.w_row3};
-    private static final int[] PILLS = {R.id.w_row1_pill, R.id.w_row2_pill, R.id.w_row3_pill};
-    private static final int[] TIMES = {R.id.w_row1_time, R.id.w_row2_time, R.id.w_row3_time};
-    private static final int[] LABELS = {R.id.w_row1_label, R.id.w_row2_label, R.id.w_row3_label};
+    private static final int[] ROWS = {R.id.w_row1, R.id.w_row2};
 
     protected boolean small() {
         return false;
@@ -69,6 +67,11 @@ public class PowerWidget extends AppWidgetProvider {
         }
     }
 
+    /** Same colour with some transparency, for secondary text. */
+    private static int soft(int color, int alpha) {
+        return (color & 0x00FFFFFF) | (alpha << 24);
+    }
+
     static RemoteViews build(Context ctx, Store st, Schedule sch, ZonedDateTime now, int id,
                              boolean small, boolean refreshing) {
         RemoteViews v = new RemoteViews(ctx.getPackageName(), small ? R.layout.widget_small : R.layout.widget_power);
@@ -79,9 +82,13 @@ public class PowerWidget extends AppWidgetProvider {
 
         Address a = st.widgetAddress(id);
         Status s = Status.compute(sch, a, now);
-        v.setInt(R.id.w_icon, "setBackgroundResource", Timeline.circleRes(s.level));
+        // Status colours are the same in light and dark theme, so fixed values are safe here.
+        int on = ctx.getColor(Timeline.contentColor(s.level));
+        v.setInt(R.id.w_root, "setBackgroundResource", Timeline.widgetBgRes(s.level));
         v.setImageViewResource(R.id.w_icon, Timeline.iconRes(s.level));
         v.setTextViewText(R.id.w_status, s.title);
+        v.setTextColor(R.id.w_status, on);
+        v.setTextColor(R.id.w_detail, on);
 
         if (small) {
             v.setTextViewText(R.id.w_detail, refreshing ? "оновлення…" : s.shortDetail);
@@ -96,20 +103,23 @@ public class PowerWidget extends AppWidgetProvider {
         v.setOnClickPendingIntent(R.id.w_switch, PendingIntent.getBroadcast(ctx, id * 10 + 2, sw,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
         v.setViewVisibility(R.id.w_switch, st.addresses().size() > 1 ? View.VISIBLE : View.GONE);
+        v.setInt(R.id.w_switch, "setColorFilter", on);
+        v.setInt(R.id.w_refresh, "setColorFilter", on);
 
         String head = a == null ? "Світло" : a.name + (a.gpvId > 0 ? " · черга " + a.gpvName : "");
         v.setTextViewText(R.id.w_address, head);
+        v.setTextColor(R.id.w_address, soft(on, 0xE6));
         v.setTextViewText(R.id.w_updated, refreshing ? "оновлення…" : st.updatedShort());
+        v.setTextColor(R.id.w_updated, soft(on, 0xCC));
         v.setTextViewText(R.id.w_detail, s.detail);
 
-        v.setViewVisibility(R.id.w_divider, s.next.isEmpty() ? View.GONE : View.VISIBLE);
+        List<int[]> up = s.upcoming(ROWS.length);
         for (int k = 0; k < ROWS.length; k++) {
-            if (k < s.next.size()) {
-                int[] r = s.next.get(k);
+            if (k < up.size()) {
+                int[] r = up.get(k);
                 v.setViewVisibility(ROWS[k], View.VISIBLE);
-                v.setImageViewResource(PILLS[k], Timeline.pillRes(r[2]));
-                v.setTextViewText(TIMES[k], Status.rowTime(r, s.nowIdx));
-                v.setTextViewText(LABELS[k], Status.rowLabel(r));
+                v.setTextViewText(ROWS[k], Status.rowTime(r, s.nowIdx) + "  " + Status.rowLabel(r).toLowerCase());
+                v.setTextColor(ROWS[k], soft(on, 0xF2));
             } else {
                 v.setViewVisibility(ROWS[k], View.GONE);
             }

@@ -12,8 +12,15 @@ final class Status {
     static final int UNKNOWN = Timeline.UNKNOWN, GREEN = Timeline.ON, YELLOW = Timeline.MAYBE, RED = Timeline.OFF;
 
     int level = UNKNOWN;
+    /** "Світло є" — the big word. */
     String title = "";
+    /** "Вимкнуть о 14:00" — what happens next (big, app). */
+    String line1 = "";
+    /** "через 40 хв · до 16:00" — supporting line (app). */
+    String line2 = "";
+    /** One line for the 4×2 widget: "Вимкнуть о 14:00 · через 40 хв". */
     String detail = "";
+    /** Very short, for the 2×2 widget: "до 14:00". */
     String shortDetail = "";
     int nowIdx;
     /** Upcoming periods: {start, end (-1 = unknown), level, emergency 0/1}, slot indexes from today 00:00. */
@@ -123,6 +130,17 @@ final class Status {
         return b.toString();
     }
 
+    /** Periods after the current one (the current one is already shown big). */
+    List<int[]> upcoming(int max) {
+        List<int[]> r = new ArrayList<>();
+        for (int[] p : next) {
+            if (p[0] == nowIdx) continue;
+            r.add(p);
+            if (r.size() >= max) break;
+        }
+        return r;
+    }
+
     /** Time column of a period row: "зараз–12:00", "12:30–24:00". */
     static String rowTime(int[] r, int nowIdx) {
         String start = r[0] == nowIdx ? "зараз" : hm(r[0]);
@@ -136,18 +154,44 @@ final class Status {
         return n;
     }
 
+    /** "08:00–10:00 і 18:00–20:00" */
+    static String joinRanges(List<int[]> r) {
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < r.size(); i++) {
+            if (i > 0) b.append(i == r.size() - 1 ? " і " : ", ");
+            b.append(hm(r.get(i)[0])).append("–").append(hm(r.get(i)[1]));
+        }
+        return b.toString();
+    }
+
+    /** Big-text summary of a whole day (used for tomorrow). */
+    static String daySummary(int[] slots) {
+        List<int[]> off = runs(slots, Schedule.OFF, Schedule.SURE_OFF);
+        List<int[]> maybe = runs(slots, Schedule.PROBABLY, Schedule.PROBABLY);
+        StringBuilder b = new StringBuilder();
+        if (off.isEmpty()) b.append("Відключень не заплановано");
+        else b.append("Світла не буде:\n").append(joinRanges(off));
+        if (!maybe.isEmpty()) b.append("\nМожливі відключення:\n").append(joinRanges(maybe));
+        return b.toString();
+    }
+
+    private void set(String line1, String line2, String detail, String shortDetail) {
+        this.line1 = line1;
+        this.line2 = line2;
+        this.detail = detail;
+        this.shortDetail = shortDetail;
+    }
+
     static Status compute(Schedule sch, Address a, ZonedDateTime now) {
         Status s = new Status();
         if (a == null) {
             s.title = "Додайте адресу";
-            s.detail = "Відкрийте застосунок і оберіть адресу";
-            s.shortDetail = "немає адреси";
+            s.set("Щоб бачити графік світла", "", "Відкрийте застосунок і оберіть адресу", "немає адреси");
             return s;
         }
         if (!sch.hasData) {
             s.title = "Немає даних";
-            s.detail = "Перевірте інтернет і натисніть «Оновити»";
-            s.shortDetail = "немає даних";
+            s.set("Перевірте інтернет", "і натисніть «Оновити»", "Перевірте інтернет", "немає даних");
             return s;
         }
         LocalDate today = now.toLocalDate();
@@ -166,8 +210,8 @@ final class Status {
             s.title = "Світла немає";
             String which = gav && sgav ? "ГАВ " + a.gavName + ", СГАВ " + a.sgavName
                     : gav ? "ГАВ " + a.gavName : "СГАВ " + a.sgavName;
-            s.detail = "Аварійне відключення (" + which + ")\nЧас повернення невідомий";
-            s.shortDetail = "аварійне відключення";
+            s.set("Аварійне відключення", which + " · час повернення невідомий",
+                    "Аварійне відключення (" + which + ")", "аварійне");
             s.next.add(new int[]{ni, -1, RED, 1});
             from = ni + 1;
         } else if (code >= Schedule.OFF) {
@@ -175,19 +219,18 @@ final class Status {
             s.title = "Світла немає";
             int end = runEnd(c, ni, Schedule.OFF, Schedule.SURE_OFF);
             String u = until(now, today, end);
-            s.detail = "Має зʼявитися о " + at(end) + " · через " + u;
+            String l2 = "через " + u;
             if (end < 96 && c[end] == Schedule.PROBABLY) {
-                s.detail += "\nДалі можливі відключення до "
-                        + at(runEnd(c, end, Schedule.PROBABLY, Schedule.PROBABLY));
+                l2 += " · потім можливе до " + hm(runEnd(c, end, Schedule.PROBABLY, Schedule.PROBABLY));
             }
-            s.shortDetail = "до " + hm(end) + " · " + u;
+            s.set("Зʼявиться о " + at(end), l2, "Зʼявиться о " + hm(end) + " · через " + u, "до " + hm(end));
         } else if (code == Schedule.PROBABLY) {
             s.level = YELLOW;
             s.title = "Можливе відключення";
             int e = runEnd(c, ni, Schedule.PROBABLY, Schedule.PROBABLY);
             String u = until(now, today, e);
-            s.detail = "Світло, ймовірно, є, але може зникнути\nДо " + at(e) + " · ще " + u;
-            s.shortDetail = "до " + hm(e) + " · " + u;
+            s.set("до " + at(e), "ще " + u + " · світло, ймовірно, є",
+                    "до " + hm(e) + " · ще " + u, "до " + hm(e));
         } else {
             s.level = GREEN;
             s.title = "Світло є";
@@ -196,17 +239,18 @@ final class Status {
             int p = ni + 1;
             while (p < 96 && c[p] == Schedule.ENABLE) p++;
             if (j < 96 && c[j] >= Schedule.OFF) {
-                s.detail = "Вимкнуть о " + at(j) + " · через " + until(now, today, j);
-                s.shortDetail = "вимкнуть о " + hm(j);
+                String u = until(now, today, j);
+                int e = runEnd(c, j, Schedule.OFF, Schedule.SURE_OFF);
+                s.set("Вимкнуть о " + at(j), "через " + u + " · до " + hm(e),
+                        "Вимкнуть о " + hm(j) + " · через " + u, "до " + hm(j));
             } else if (p < 96 && c[p] == Schedule.PROBABLY) {
-                s.detail = "Можливе відключення о " + at(p) + " · через " + until(now, today, p);
-                s.shortDetail = "можливе о " + hm(p);
+                String u = until(now, today, p);
+                s.set("Можливе відключення о " + at(p), "через " + u,
+                        "Можливе о " + hm(p) + " · через " + u, "до " + hm(p));
             } else if (j < 96) {
-                s.detail = "Сьогодні відключень більше немає";
-                s.shortDetail = "сьогодні без відключень";
+                s.set("Сьогодні відключень більше немає", "", "Сьогодні відключень більше немає", "сьогодні без відключень");
             } else {
-                s.detail = "Відключень за графіком немає";
-                s.shortDetail = "без відключень";
+                s.set("Відключень за графіком немає", "", "Відключень за графіком немає", "без відключень");
             }
         }
 

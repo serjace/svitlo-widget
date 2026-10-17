@@ -3,30 +3,33 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:gravity="center_vertical"
+    android:minHeight="56dp"
     android:orientation="horizontal"
-    android:paddingTop="5dp"
-    android:paddingBottom="5dp">
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp">
 
     <ImageView
         android:id="@+id/p_pill"
-        android:layout_width="6dp"
-        android:layout_height="20dp"
+        android:layout_width="14dp"
+        android:layout_height="36dp"
         android:contentDescription="@null" />
 
     <TextView
         android:id="@+id/p_time"
-        android:layout_width="112dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
+        android:layout_marginStart="14dp"
+        android:layout_marginEnd="14dp"
         android:fontFamily="sans-serif-medium"
-        android:textAppearance="?attr/textAppearanceBodyLarge"
-        android:textColor="?attr/colorOnSurface" />
+        android:minWidth="150dp"
+        android:textColor="?attr/colorOnSurface"
+        android:textSize="22sp" />
 
     <TextView
         android:id="@+id/p_label"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:textAppearance="?attr/textAppearanceBodyMedium"
-        android:textColor="?attr/colorOnSurfaceVariant" />
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="18sp" />
 </LinearLayout>

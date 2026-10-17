@@ -25,6 +25,7 @@ final class Updater {
     static final int JOB_PERIODIC = 1001;
     static final int JOB_NOW = 1002;
     static final String ACTION_TICK = "ua.mk.svitlo.TICK";
+    static final String ACTION_CHECK = "ua.mk.svitlo.CHECK";
 
     private static final Object LOCK = new Object();
     private static volatile Runnable listener;
@@ -95,24 +96,39 @@ final class Updater {
         return true;
     }
 
-    /** Wake up at the next half-hour boundary, or earlier to warn before an outage. */
+    /**
+     * Two alarms, to save battery:
+     * 1) an exact wake-up only when something changes — the status of any address changes,
+     *    a warning is due, or a new day starts (a few times a day);
+     * 2) a regular check every few minutes that does NOT wake the phone: it runs as soon as the
+     *    screen is on, so widgets are fresh when someone looks at them.
+     * While the phone sleeps, the 15-minute background job (batched by Android) keeps data fresh.
+     */
     static void scheduleNext(Context ctx, Store st, Schedule sch, ZonedDateTime now) {
         LocalDate today = now.toLocalDate();
         int ni = Status.nowIndex(now);
-        ZonedDateTime next = Status.timeOf(today, ni + 1).plusSeconds(5);
-        ZonedDateTime check = now.plusMinutes(st.interval());
-        if (check.isBefore(next)) next = check;
+        ZonedDateTime next = Status.timeOf(today, 48).plusSeconds(5);   // tomorrow 00:00
 
-        if (sch.hasData && st.flag(Store.F_BEFORE)) {
+        if (sch.hasData) {
+            boolean warn = st.flag(Store.F_BEFORE);
             int lead = st.lead();
             for (Address a : st.addresses()) {
-                if (!a.notify) continue;
                 int[] c = Status.combined(sch, a, today);
+                int cur = Timeline.level(c[ni]);
                 for (int j = ni + 1; j < 96 && c[j] >= 0; j++) {
-                    if (c[j] >= Schedule.OFF && c[j - 1] < Schedule.OFF) {
-                        ZonedDateTime warn = Status.timeOf(today, j).minusMinutes(lead);
-                        if (warn.isAfter(now) && warn.isBefore(next)) next = warn;
+                    if (Timeline.level(c[j]) != cur) {
+                        ZonedDateTime change = Status.timeOf(today, j).plusSeconds(5);
+                        if (change.isBefore(next)) next = change;
                         break;
+                    }
+                }
+                if (warn && a.notify) {
+                    for (int j = ni + 1; j < 96 && c[j] >= 0; j++) {
+                        if (c[j] >= Schedule.OFF && c[j - 1] < Schedule.OFF) {
+                            ZonedDateTime w = Status.timeOf(today, j).minusMinutes(lead);
+                            if (w.isAfter(now) && w.isBefore(next)) next = w;
+                            break;
+                        }
                     }
                 }
             }
@@ -120,8 +136,10 @@ final class Updater {
 
         AlarmManager am = ctx.getSystemService(AlarmManager.class);
         if (am == null) return;
-        Intent i = new Intent(ctx, AlarmReceiver.class).setAction(ACTION_TICK);
-        PendingIntent pi = PendingIntent.getBroadcast(ctx, 1, i,
+
+        // 1) exact wake-up at the next change
+        PendingIntent pi = PendingIntent.getBroadcast(ctx, 1,
+                new Intent(ctx, AlarmReceiver.class).setAction(ACTION_TICK),
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         long at = next.toInstant().toEpochMilli();
         boolean exact = Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms();
@@ -131,6 +149,12 @@ final class Updater {
         } catch (SecurityException e) {
             am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
         }
+
+        // 2) regular check that waits for the screen to be on (no wake-up)
+        PendingIntent check = PendingIntent.getBroadcast(ctx, 2,
+                new Intent(ctx, AlarmReceiver.class).setAction(ACTION_CHECK),
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        am.set(AlarmManager.RTC, System.currentTimeMillis() + st.interval() * 60 * 1000L, check);
     }
 
     /** Download fresh data every 15 minutes (Android's minimum) when there is internet. */

@@ -3,21 +3,26 @@
     <bool name="light_bars">true</bool>
     <color name="icon_bg">#F0F7FD</color>
 
-    <!-- Status colours (light theme) -->
-    <color name="st_on_container">#C3EFAD</color>
-    <color name="st_on_content">#0C3900</color>
-    <color name="st_on_strong">#2E7D32</color>
-    <color name="st_maybe_container">#FFE08A</color>
-    <color name="st_maybe_content">#4A3500</color>
-    <color name="st_maybe_strong">#E0A800</color>
-    <color name="st_off_container">#FFDAD6</color>
-    <color name="st_off_content">#690005</color>
-    <color name="st_off_strong">#D32F2F</color>
-    <color name="st_unknown_container">#E2E2E9</color>
-    <color name="st_unknown_content">#44474F</color>
-    <color name="st_unknown_strong">#9E9E9E</color>
+    <!-- Status colours: bold fills that differ in brightness too (readable for everyone).
+         Same in light and dark theme. container = fill, content = text on the fill. -->
+    <color name="st_on_container">#2E8B3E</color>
+    <color name="st_on_content">#FFFFFF</color>
+    <color name="st_on_strong">#2E8B3E</color>
+    <color name="st_maybe_container">#F4C20D</color>
+    <color name="st_maybe_content">#2B2100</color>
+    <color name="st_maybe_strong">#F4C20D</color>
+    <color name="st_off_container">#C62828</color>
+    <color name="st_off_content">#FFFFFF</color>
+    <color name="st_off_strong">#C62828</color>
+    <color name="st_unknown_container">#6B6F78</color>
+    <color name="st_unknown_content">#FFFFFF</color>
+    <color name="st_unknown_strong">#6B6F78</color>
 
-    <!-- Widget (light theme, Android 11 and older) -->
+    <!-- Hours that have already passed -->
+    <color name="grid_past_fill">#D9DAE0</color>
+    <color name="grid_past_text">#80838C</color>
+
+    <!-- Neutral widget colours (light theme, Android 11 and older) -->
     <color name="widget_bg">#EEF0F8</color>
     <color name="widget_on">#1A1B20</color>
     <color name="widget_sub">#44474F</color>

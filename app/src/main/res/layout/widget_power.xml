@@ -3,12 +3,12 @@
     android:id="@+id/w_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_bg"
+    android:background="@drawable/wbg_on"
     android:orientation="vertical"
-    android:paddingStart="16dp"
-    android:paddingTop="4dp"
-    android:paddingEnd="6dp"
-    android:paddingBottom="10dp">
+    android:paddingStart="18dp"
+    android:paddingTop="6dp"
+    android:paddingEnd="8dp"
+    android:paddingBottom="12dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -24,8 +24,8 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="Дім · черга 3.2"
-            android:textColor="@color/widget_sub"
-            android:textSize="12sp" />
+            android:textColor="#E6FFFFFF"
+            android:textSize="14sp" />
 
         <TextView
             android:id="@+id/w_updated"
@@ -33,24 +33,24 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="6dp"
             android:maxLines="1"
-            android:text="11:17"
-            android:textColor="@color/widget_muted"
-            android:textSize="11sp" />
+            android:text="13:15"
+            android:textColor="#CCFFFFFF"
+            android:textSize="13sp" />
 
         <ImageView
             android:id="@+id/w_switch"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
             android:contentDescription="Інша адреса"
-            android:padding="6dp"
+            android:padding="7dp"
             android:src="@drawable/ic_swap" />
 
         <ImageView
             android:id="@+id/w_refresh"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
             android:contentDescription="Оновити"
-            android:padding="6dp"
+            android:padding="7dp"
             android:src="@drawable/ic_refresh" />
     </LinearLayout>
 
@@ -63,167 +63,57 @@
 
         <ImageView
             android:id="@+id/w_icon"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/circle_on"
-            android:contentDescription="Статус"
-            android:padding="8dp"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:contentDescription="@null"
             android:src="@drawable/ic_status_on" />
 
-        <LinearLayout
-            android:layout_width="0dp"
+        <TextView
+            android:id="@+id/w_status"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_weight="1"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/w_status"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:fontFamily="sans-serif-medium"
-                android:maxLines="1"
-                android:text="Світло є"
-                android:textColor="@color/widget_on"
-                android:textSize="19sp" />
-
-            <TextView
-                android:id="@+id/w_detail"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:maxLines="2"
-                android:text="Вимкнуть о 14:00 · через 2 год"
-                android:textColor="@color/widget_sub"
-                android:textSize="13sp" />
-        </LinearLayout>
+            android:layout_marginStart="8dp"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
+            android:maxLines="1"
+            android:text="Світло є"
+            android:textColor="#FFFFFFFF"
+            android:textSize="26sp" />
     </LinearLayout>
 
-    <ImageView
-        android:id="@+id/w_divider"
+    <TextView
+        android:id="@+id/w_detail"
         android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="10dp"
-        android:layout_marginBottom="3dp"
-        android:background="@color/widget_line"
-        android:contentDescription="@null" />
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:ellipsize="end"
+        android:fontFamily="sans-serif-medium"
+        android:maxLines="1"
+        android:paddingEnd="10dp"
+        android:text="Вимкнуть о 14:00 · через 40 хв"
+        android:textColor="#FFFFFFFF"
+        android:textSize="18sp" />
 
-    <LinearLayout
+    <TextView
         android:id="@+id/w_row1"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingTop="2dp"
-        android:paddingBottom="2dp">
+        android:layout_marginTop="6dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingEnd="10dp"
+        android:text="14:00–16:00 світла немає"
+        android:textColor="#F2FFFFFF"
+        android:textSize="16sp" />
 
-        <ImageView
-            android:id="@+id/w_row1_pill"
-            android:layout_width="6dp"
-            android:layout_height="16dp"
-            android:contentDescription="@null"
-            android:src="@drawable/pill_on" />
-
-        <TextView
-            android:id="@+id/w_row1_time"
-            android:layout_width="96dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:fontFamily="sans-serif-medium"
-            android:maxLines="1"
-            android:text="зараз–14:00"
-            android:textColor="@color/widget_on"
-            android:textSize="13sp" />
-
-        <TextView
-            android:id="@+id/w_row1_label"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Світло є"
-            android:textColor="@color/widget_sub"
-            android:textSize="13sp" />
-    </LinearLayout>
-
-    <LinearLayout
+    <TextView
         android:id="@+id/w_row2"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingTop="2dp"
-        android:paddingBottom="2dp">
-
-        <ImageView
-            android:id="@+id/w_row2_pill"
-            android:layout_width="6dp"
-            android:layout_height="16dp"
-            android:contentDescription="@null"
-            android:src="@drawable/pill_off" />
-
-        <TextView
-            android:id="@+id/w_row2_time"
-            android:layout_width="96dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:fontFamily="sans-serif-medium"
-            android:maxLines="1"
-            android:text="14:00–16:00"
-            android:textColor="@color/widget_on"
-            android:textSize="13sp" />
-
-        <TextView
-            android:id="@+id/w_row2_label"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Відключення"
-            android:textColor="@color/widget_sub"
-            android:textSize="13sp" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/w_row3"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingTop="2dp"
-        android:paddingBottom="2dp">
-
-        <ImageView
-            android:id="@+id/w_row3_pill"
-            android:layout_width="6dp"
-            android:layout_height="16dp"
-            android:contentDescription="@null"
-            android:src="@drawable/pill_on" />
-
-        <TextView
-            android:id="@+id/w_row3_time"
-            android:layout_width="96dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:fontFamily="sans-serif-medium"
-            android:maxLines="1"
-            android:text="16:00–24:00"
-            android:textColor="@color/widget_on"
-            android:textSize="13sp" />
-
-        <TextView
-            android:id="@+id/w_row3_label"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Світло є"
-            android:textColor="@color/widget_sub"
-            android:textSize="13sp" />
-    </LinearLayout>
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingEnd="10dp"
+        android:text="16:00–16:30 можливе відключення"
+        android:textColor="#F2FFFFFF"
+        android:textSize="16sp" />
 </LinearLayout>

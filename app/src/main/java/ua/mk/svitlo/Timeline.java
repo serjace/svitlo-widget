@@ -19,7 +19,7 @@ final class Timeline {
         switch (lvl) {
             case ON: return "Світло є";
             case MAYBE: return "Можливе відключення";
-            case OFF: return "Відключення";
+            case OFF: return "Світла немає";
             default: return "Невідомо";
         }
     }
@@ -66,6 +66,16 @@ final class Timeline {
             case MAYBE: return R.drawable.ic_status_maybe;
             case OFF: return R.drawable.ic_status_off;
             default: return R.drawable.ic_status_unknown;
+        }
+    }
+
+    /** Full widget background in the status colour. */
+    static int widgetBgRes(int lvl) {
+        switch (lvl) {
+            case ON: return R.drawable.wbg_on;
+            case MAYBE: return R.drawable.wbg_maybe;
+            case OFF: return R.drawable.wbg_off;
+            default: return R.drawable.wbg_unknown;
         }
     }
 

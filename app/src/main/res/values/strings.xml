@@ -3,7 +3,7 @@
     <string name="app_name">Світло</string>
     <string name="widget_name">Світло</string>
     <string name="widget_description">Чи є світло і коли зміниться (Миколаївобленерго)</string>
-    <string name="small_widget_name">Світло — компактний</string>
-    <string name="small_widget_description">Лише статус і час</string>
+    <string name="small_widget_name">Світло — квадратний</string>
+    <string name="small_widget_description">Великий статус і час, видно здалеку</string>
     <string name="add_address">Додати адресу</string>
 </resources>
