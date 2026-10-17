@@ -21,7 +21,20 @@ import java.util.List;
  * (WidgetConfigActivity), in normal or large text. Tapping opens the app on that address.
  */
 public class PowerWidget extends AppWidgetProvider {
+    static final String ACTION_SWITCH = "ua.mk.svitlo.SWITCH";
     private static final int[] ROWS = {R.id.w_row1, R.id.w_row2};
+
+    /** Tap on the place name / ⇄: show the next saved address on this widget. */
+    @Override
+    public void onReceive(Context ctx, Intent intent) {
+        super.onReceive(ctx, intent);
+        if (ACTION_SWITCH.equals(intent.getAction())) {
+            int id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
+            if (id == AppWidgetManager.INVALID_APPWIDGET_ID) return;
+            new Store(ctx).cycleWidget(id);
+            updateOne(ctx, id);
+        }
+    }
 
     protected boolean small() {
         return false;
@@ -110,6 +123,22 @@ public class PowerWidget extends AppWidgetProvider {
         }
         v.setTextViewText(R.id.w_address, place);
         v.setTextViewText(R.id.w_status, s.title);
+
+        // ⇄ switch: the whole place-name row is the button (big target, no extra space)
+        boolean several = st.addresses().size() > 1;
+        v.setViewVisibility(R.id.w_switch, several ? View.VISIBLE : View.GONE);
+        if (several) {
+            boolean lightText = (on & 0x00FFFFFF) == 0x00FFFFFF;
+            v.setInt(R.id.w_switch, "setBackgroundResource",
+                    lightText ? R.drawable.switch_pill_light : R.drawable.switch_pill_dark);
+            v.setInt(R.id.w_switch, "setColorFilter", on);
+            Intent sw = new Intent(ctx, PowerWidget.class).setAction(ACTION_SWITCH)
+                    .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id);
+            PendingIntent swPi = PendingIntent.getBroadcast(ctx, 2000 + id, sw,
+                    PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+            v.setOnClickPendingIntent(R.id.w_header, swPi);
+            v.setOnClickPendingIntent(R.id.w_switch, swPi);
+        }
 
         if (small) {
             v.setTextViewText(R.id.w_detail, s.shortDetail);

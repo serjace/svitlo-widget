@@ -13,9 +13,10 @@
     android:paddingBottom="10dp">
 
     <LinearLayout
+        android:id="@+id/w_header"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="2"
+        android:layout_weight="2.6"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
@@ -44,6 +45,20 @@
             android:maxLines="1"
             android:text="Дім"
             android:textColor="#FFFFFFFF" />
+
+        <ImageView
+            android:id="@+id/w_switch"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_marginStart="6dp"
+            android:adjustViewBounds="true"
+            android:background="@drawable/switch_pill_light"
+            android:contentDescription="Інша адреса"
+            android:paddingStart="12dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="3dp"
+            android:src="@drawable/ic_swap" />
     </LinearLayout>
 
     <LinearLayout

@@ -99,7 +99,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:text="Порада: розтягніть віджет на екрані — текст стане ще більшим. Щоб бачити кілька адрес, додайте кілька віджетів."
+                android:text="Порада: розтягніть віджет на екрані — текст стане ще більшим. Щоб перемкнути адресу прямо на віджеті, торкніться назви місця або значка ⇄ вгорі."
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="16sp" />
 
