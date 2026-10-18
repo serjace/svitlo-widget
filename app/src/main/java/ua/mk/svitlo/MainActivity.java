@@ -19,7 +19,9 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.widget.NestedScrollView;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.android.material.appbar.AppBarLayout;
@@ -28,6 +30,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
 
@@ -249,7 +252,7 @@ public class MainActivity extends AppCompatActivity {
         for (int i = 0; i < rv.getChildCount(); i++) {
             View child = rv.getChildAt(i);
             RecyclerView.ViewHolder h = rv.getChildViewHolder(child);
-            if (h != null && h.getAdapterPosition() != cur) child.scrollTo(0, 0);
+            if (h instanceof Page && h.getAdapterPosition() != cur) ((Page) h).scroll.scrollTo(0, 0);
         }
     }
 
@@ -364,11 +367,19 @@ public class MainActivity extends AppCompatActivity {
         final LinearLayout mNext;
         final HourGridView mTodayGrid, mTomorrowGrid;
         final View content;
+        final NestedScrollView scroll;
+        final SwipeRefreshLayout refresher;
         int boundPos = -1;
 
         Page(View v) {
             super(v);
             content = v.findViewById(R.id.page_content);
+            scroll = v.findViewById(R.id.page_scroll);
+            refresher = v.findViewById(R.id.page_refresh);
+            refresher.setColorSchemeColors(MaterialColors.getColor(v, androidx.appcompat.R.attr.colorPrimary));
+            refresher.setProgressBackgroundColorSchemeColor(
+                    MaterialColors.getColor(v, com.google.android.material.R.attr.colorSurfaceContainerHigh));
+            refresher.setOnRefreshListener(() -> refresh(true));
             addrBox = v.findViewById(R.id.p_addr_box);
             addrName = v.findViewById(R.id.p_addr_name);
             addrFull = v.findViewById(R.id.p_addr_full);
@@ -397,7 +408,8 @@ public class MainActivity extends AppCompatActivity {
         void bind(Address a, int pos) {
             Bars.padBottom(content, navInset);
             // a reused page showing another address starts at the top
-            if (boundPos != pos) itemView.scrollTo(0, 0);
+            if (boundPos != pos) scroll.scrollTo(0, 0);
+            refresher.setRefreshing(refreshing);
             boundPos = pos;
             if (sch == null) return;
             Status s = Status.compute(sch, a, now);

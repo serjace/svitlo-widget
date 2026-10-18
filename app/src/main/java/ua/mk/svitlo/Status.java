@@ -212,14 +212,17 @@ final class Status {
      * Fills the texts from the periods: now (title) → the next change (line1, with a countdown)
      * → the change after that (line3). Possible outages count as a change too.
      */
-    private void describe(ZonedDateTime now, LocalDate today) {
+    private void describe(ZonedDateTime now, LocalDate today, int[] c) {
         if (next.isEmpty()) return;
         int[] cur = next.get(0);
         if (next.size() < 2) {
             shown = 1;
             String l;
             if (level == GREEN) {
-                l = cur[1] < 96 ? "Сьогодні відключень більше немає" : "Відключень за графіком немає";
+                // were there outages (or possible ones) earlier today?
+                boolean earlier = false;
+                for (int k = 0; k < nowIdx && k < 48; k++) if (c[k] >= Schedule.PROBABLY) earlier = true;
+                l = earlier ? "Сьогодні відключень більше немає" : "Сьогодні відключень не заплановано";
             } else {
                 l = "до " + at(cur[1]) + (cur[1] < 96 ? " · далі графіка ще немає" : "");
             }
@@ -332,7 +335,7 @@ final class Status {
             s.next.add(new int[]{i, e, lvl, 0});
             i = e;
         }
-        if (!gav && !sgav) s.describe(now, today);
+        if (!gav && !sgav) s.describe(now, today, c);
         return s;
     }
 }
