@@ -57,6 +57,8 @@ public class MainActivity extends AppCompatActivity {
     private ChipGroup chips;
     private HorizontalScrollView chipsScroll;
     private AppBarLayout appBar;
+    private int appBarOffset;   // 0 = address buttons fully shown
+    private SwipeRefreshLayout swipe;
     private final List<Integer> chipIds = new ArrayList<>();
     private String chipsKey;
     private int navInset;   // space to keep free at the bottom for the (transparent) gesture bar
@@ -87,12 +89,22 @@ public class MainActivity extends AppCompatActivity {
         chips = findViewById(R.id.main_chips);
         chipsScroll = findViewById(R.id.main_chips_scroll);
         appBar = findViewById(R.id.main_appbar);
+        appBar.addOnOffsetChangedListener((bar, offset) -> appBarOffset = offset);
+
+        // Pull to refresh: only when the page is at its very top, never while swiping sideways
+        swipe = findViewById(R.id.main_refresh);
+        swipe.setColorSchemeColors(MaterialColors.getColor(swipe, androidx.appcompat.R.attr.colorPrimary));
+        swipe.setProgressBackgroundColorSchemeColor(
+                MaterialColors.getColor(swipe, com.google.android.material.R.attr.colorSurfaceContainerHigh));
+        swipe.setOnChildScrollUpCallback((parent, child) -> appBarOffset != 0 || currentPageScrolled());
+        swipe.setOnRefreshListener(() -> refresh(true));
         pager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageScrollStateChanged(int state) {
                 // Swipe starts: the page sliding in starts at the top.
                 // Swipe ends: the page we left goes back to the top too.
                 scrollOthersToTop();
+                swipe.setEnabled(state == ViewPager2.SCROLL_STATE_IDLE);
             }
 
             @Override
@@ -200,13 +212,14 @@ public class MainActivity extends AppCompatActivity {
 
     /** @param byUser show a small "Оновлено о …" pop-up when done (⟳ was tapped) */
     void refresh(boolean byUser) {
-        if (refreshing) return;
+        if (refreshing) return;   // already running; its end also hides the pull circle
         refreshing = true;
-        adapter.notifyDataSetChanged();
+        setFooters("Оновлення…");
         new Thread(() -> {
             Updater.tick(getApplicationContext(), true, byUser);
             runOnUiThread(() -> {
                 refreshing = false;
+                swipe.setRefreshing(false);
                 render();
                 if (byUser && !isFinishing()) {
                     Store st = new Store(this);
@@ -242,6 +255,24 @@ public class MainActivity extends AppCompatActivity {
         pager.post(() -> ignorePageEvents = false);
 
         renderUpdate();
+    }
+
+    /** The "Оновлено …" line of the pages on screen, without redrawing them. */
+    private void setFooters(String text) {
+        if (!(pager.getChildAt(0) instanceof RecyclerView)) return;
+        RecyclerView rv = (RecyclerView) pager.getChildAt(0);
+        for (int i = 0; i < rv.getChildCount(); i++) {
+            RecyclerView.ViewHolder h = rv.getChildViewHolder(rv.getChildAt(i));
+            if (h instanceof Page) ((Page) h).mUpdated.setText(text);
+        }
+    }
+
+    /** Is the page on screen scrolled down (so a pull should scroll it, not refresh)? */
+    private boolean currentPageScrolled() {
+        if (!(pager.getChildAt(0) instanceof RecyclerView)) return false;
+        RecyclerView.ViewHolder h = ((RecyclerView) pager.getChildAt(0))
+                .findViewHolderForAdapterPosition(pager.getCurrentItem());
+        return h instanceof Page && ((Page) h).scroll.canScrollVertically(-1);
     }
 
     /** Pages that are not the one on screen go back to the top. */
@@ -368,18 +399,12 @@ public class MainActivity extends AppCompatActivity {
         final HourGridView mTodayGrid, mTomorrowGrid;
         final View content;
         final NestedScrollView scroll;
-        final SwipeRefreshLayout refresher;
         int boundPos = -1;
 
         Page(View v) {
             super(v);
             content = v.findViewById(R.id.page_content);
-            scroll = v.findViewById(R.id.page_scroll);
-            refresher = v.findViewById(R.id.page_refresh);
-            refresher.setColorSchemeColors(MaterialColors.getColor(v, androidx.appcompat.R.attr.colorPrimary));
-            refresher.setProgressBackgroundColorSchemeColor(
-                    MaterialColors.getColor(v, com.google.android.material.R.attr.colorSurfaceContainerHigh));
-            refresher.setOnRefreshListener(() -> refresh(true));
+            scroll = (NestedScrollView) v;
             addrBox = v.findViewById(R.id.p_addr_box);
             addrName = v.findViewById(R.id.p_addr_name);
             addrFull = v.findViewById(R.id.p_addr_full);
@@ -409,7 +434,6 @@ public class MainActivity extends AppCompatActivity {
             Bars.padBottom(content, navInset);
             // a reused page showing another address starts at the top
             if (boundPos != pos) scroll.scrollTo(0, 0);
-            refresher.setRefreshing(refreshing);
             boundPos = pos;
             if (sch == null) return;
             Status s = Status.compute(sch, a, now);
