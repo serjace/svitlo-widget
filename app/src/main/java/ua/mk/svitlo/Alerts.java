@@ -73,11 +73,16 @@ final class Alerts {
             ns.put("gav", gav);
             ns.put("sgav", sgav);
 
+            // A new ГПВ queue (found by Updater): one notification that also says what it means
+            // for today and tomorrow, instead of separate "schedule changed" ones
+            JSONObject qchg = ns.optJSONObject("qchg");
+            ns.remove("qchg");
+
             // --- Schedule changed / tomorrow published ---
             if (a.gpvId > 0) {
                 JSONObject old = ns.optJSONObject("h");
                 if (old == null) old = new JSONObject();
-                boolean tell = !first && on && st.flag(Store.F_SCHEDULE);
+                boolean tell = !first && on && st.flag(Store.F_SCHEDULE) && qchg == null;
                 JSONObject fresh = new JSONObject();
 
                 int[] t = sch.slots(today, a.gpvId);
@@ -112,6 +117,25 @@ final class Alerts {
                     fresh.put(km, old.optString(km));
                 }
                 ns.put("h", fresh);
+            }
+
+            if (qchg != null && on && st.flag(Store.F_SCHEDULE) && a.gpvId > 0) {
+                int[] t = sch.slots(today, a.gpvId);
+                if (t == null) t = new int[48];
+                int[] m = sch.slots(tomorrow, a.gpvId);
+                String from = qchg.optString("from");
+                String title, was;
+                if (qchg.optBoolean("own")) {
+                    title = a.name + ": сайт тепер вказує чергу вашого будинку — ГПВ " + a.gpvName;
+                    was = "Досі була черга сусіднього будинку" + (from.isEmpty() ? "" : " (" + from + ")") + ".\n";
+                } else {
+                    title = a.name + ": зміна черги на ГПВ " + a.gpvName;
+                    was = from.isEmpty() ? "" : "Була черга " + from + ".\n";
+                }
+                String text = was + Status.restOfDay(t, ni)
+                        + (m != null ? "\n\nЗавтра:\n" + Status.daySummary(m) : "");
+                show(ctx, live, endOfToday + 86400, Notifier.CH_SCHEDULE, "q:" + a.domId, title, text,
+                        Status.color(Status.YELLOW));
             }
 
             // --- Before an outage / power should be back ---

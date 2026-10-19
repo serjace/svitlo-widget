@@ -216,7 +216,7 @@ public class MainActivity extends AppCompatActivity {
         refreshing = true;
         setFooters("Оновлення…");
         new Thread(() -> {
-            Updater.tick(getApplicationContext(), true, byUser);
+            Updater.tick(getApplicationContext(), true, true);   // queues too
             runOnUiThread(() -> {
                 refreshing = false;
                 swipe.setRefreshing(false);

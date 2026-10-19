@@ -222,7 +222,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:minHeight="56dp"
-                        android:text="Зміни графіка і графік на завтра"
+                        android:text="Зміни графіка, черги і графік на завтра"
                         android:textSize="18sp" />
 
                     <TextView

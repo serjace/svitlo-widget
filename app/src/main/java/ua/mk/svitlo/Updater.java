@@ -12,6 +12,7 @@ import android.os.Handler;
 import android.os.Looper;
 
 import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
@@ -83,18 +84,63 @@ final class Updater {
             return false;
         }
 
-        // Re-check which queues each address belongs to every hour (they can be reassigned),
-        // or right away when ⟳ is tapped. One small request per address.
+        // Re-check which queues each address belongs to every 30 minutes and whenever the app is
+        // opened or refreshed: queues get reassigned after damage to the grid. One small request
+        // per address. A change counts only when two checks in a row agree.
         long now = System.currentTimeMillis();
         List<Address> list = st.addresses();
         boolean changed = false;
         for (Address a : list) {
-            if (!queuesNow && now - a.queuesCheckedAt < 3600 * 1000L) continue;
+            boolean due = queuesNow || !a.pendQ.isEmpty() || now - a.queuesCheckedAt >= 30 * 60 * 1000L;
+            if (!due) continue;
             try {
-                JSONArray oq = Api.getArray("/api/addr/dom/" + a.queueSource() + "/outage-queue");
-                if (oq.length() > 0) a.applyQueues(oq);
+                boolean own = false;
+                JSONArray oq = null;
+                if (a.qDomId > 0 && a.qDomId != a.domId) {
+                    // borrowed from a neighbour: does the website list queues for the house itself now?
+                    JSONArray mine = Api.getArray("/api/addr/dom/" + a.domId + "/outage-queue");
+                    if (mine.length() > 0) {
+                        oq = mine;
+                        own = true;
+                    }
+                }
+                if (oq == null) oq = Api.getArray("/api/addr/dom/" + a.queueSource() + "/outage-queue");
                 a.queuesCheckedAt = now;
                 changed = true;
+                if (oq.length() == 0) {   // a glitch: keep what we have
+                    a.pendQ = "";
+                    continue;
+                }
+                Address fresh = new Address();
+                fresh.applyQueues(oq);
+                if (!own && fresh.gpvId == a.gpvId && fresh.gavId == a.gavId && fresh.sgavId == a.sgavId) {
+                    a.applyQueues(oq);   // the same queues (names may be spelled differently)
+                    a.pendQ = "";
+                    continue;
+                }
+                String seen = fresh.gpvId + ":" + fresh.gavId + ":" + fresh.sgavId + ":" + (own ? 1 : 0);
+                if (!seen.equals(a.pendQ)) {   // first time: wait for the next check to confirm
+                    a.pendQ = seen;
+                    continue;
+                }
+                // confirmed: take the new queues
+                a.pendQ = "";
+                int oldGpv = a.gpvId;
+                String oldName = a.gpvName;
+                a.applyQueues(oq);
+                if (own) {
+                    a.qDomId = 0;
+                    a.qDomName = "";
+                }
+                // ГАВ / СГАВ change silently; a new ГПВ queue gets a notification (Alerts)
+                if (own || a.gpvId != oldGpv) {
+                    JSONObject ns = st.notifyState(a.domId);
+                    JSONObject ev = new JSONObject();
+                    ev.put("from", oldGpv > 0 ? oldName : "");
+                    ev.put("own", own);
+                    ns.put("qchg", ev);
+                    st.saveNotifyState(a.domId, ns);
+                }
             } catch (Exception ignored) {
             }
         }

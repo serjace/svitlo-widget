@@ -20,6 +20,9 @@ final class Address {
      *  when the website has no queues for this exact house. */
     long qDomId;
     String qDomName = "";
+    /** Queues the website reported once but that differ from ours: "gpv:gav:sgav:own".
+     *  They are taken only when the next check reports the same (the website sometimes glitches). */
+    String pendQ = "";
     /** The four choices it was made from, so editing can start from them (0/"" = unknown). */
     long filId, nsId, stId;
     String nsName = "", stName = "", domName = "";
@@ -48,6 +51,7 @@ final class Address {
             o.put("qAt", queuesCheckedAt);
             o.put("qDom", qDomId);
             o.put("qDomN", qDomName);
+            o.put("pendQ", pendQ);
             o.put("fil", filId);
             o.put("ns", nsId);
             o.put("st", stId);
@@ -74,6 +78,7 @@ final class Address {
         a.queuesCheckedAt = o.optLong("qAt");
         a.qDomId = o.optLong("qDom");
         a.qDomName = o.optString("qDomN");
+        a.pendQ = o.optString("pendQ");
         a.filId = o.optLong("fil");
         a.nsId = o.optLong("ns");
         a.stId = o.optLong("st");
