@@ -255,6 +255,14 @@ public class SettingsActivity extends AppCompatActivity {
         addrList.setVisibility(list.isEmpty() ? View.GONE : View.VISIBLE);
     }
 
+    /** Address, queues and — only when limited — the notification hours. */
+    private static String subText(Address a) {
+        String s = a.full + "\n" + a.queuesText();
+        String hours = a.notifyHoursText();
+        if (a.notify && !hours.isEmpty()) s += "\n🔔 " + hours;
+        return s;
+    }
+
     /** Compact rows: ≡ · name and address (tap = edit or delete) · 🔔 switch. */
     private class AddrAdapter extends RecyclerView.Adapter<AddrAdapter.Row> {
         final List<Address> items = new ArrayList<>();
@@ -287,12 +295,13 @@ public class SettingsActivity extends AppCompatActivity {
         public void onBindViewHolder(@NonNull Row h, int position) {
             Address a = items.get(position);
             h.title.setText(a.name);
-            h.sub.setText(a.full + "\n" + a.queuesText());
+            h.sub.setText(subText(a));
             h.itemView.findViewById(R.id.a_handle).setVisibility(items.size() > 1 ? View.VISIBLE : View.INVISIBLE);
             h.bell.setOnCheckedChangeListener(null);
             h.bell.setChecked(a.notify);
             h.bell.setOnCheckedChangeListener((b, isChecked) -> {
                 a.notify = isChecked;
+                h.sub.setText(subText(a));
                 Store s = new Store(SettingsActivity.this);
                 List<Address> all = s.addresses();
                 for (Address x : all) if (x.domId == a.domId) x.notify = isChecked;

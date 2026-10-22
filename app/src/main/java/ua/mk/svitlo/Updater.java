@@ -177,12 +177,22 @@ final class Updater {
                 if (warn && a.notify) {
                     for (int j = ni + 1; j < 96 && c[j] >= 0; j++) {
                         if (c[j] >= Schedule.OFF && c[j - 1] < Schedule.OFF) {
+                            if (!a.notifyAllowed(Status.timeOf(today, j))) break;   // outside its hours
                             ZonedDateTime w = Status.timeOf(today, j).minusMinutes(lead);
                             if (w.isAfter(now) && w.isBefore(next)) next = w;
                             break;
                         }
                     }
                 }
+            }
+        }
+
+        // news postponed until an address's notification hours start
+        for (Address a : st.addresses()) {
+            JSONObject d = st.notifyState(a.domId).optJSONObject("defer");
+            if (a.notify && d != null && d.length() > 0) {
+                ZonedDateTime w = a.nextAllowed(now);
+                if (w != null && w.plusSeconds(5).isBefore(next)) next = w.plusSeconds(5);
             }
         }
 

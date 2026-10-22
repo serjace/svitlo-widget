@@ -42,6 +42,7 @@ final class Alerts {
             JSONObject ns = st.notifyState(a.domId);
             boolean first = ns.length() == 0;   // just added: remember the state, don't notify
             boolean on = a.notify;
+            boolean open = a.notifyAllowed(now);   // inside this address's notification hours
             Status cur = Status.compute(sch, a, now);
             long nowSec = now.toEpochSecond();
             long endOfToday = Status.timeOf(today, 48).toEpochSecond();
@@ -66,7 +67,7 @@ final class Alerts {
             // --- Emergency outages (ГАВ / СГАВ) ---
             boolean gav = a.gavId > 0 && sch.isEnabled(a.gavId);
             boolean sgav = a.sgavId > 0 && sch.isEnabled(a.sgavId);
-            if (!first && on && st.flag(Store.F_EMERGENCY)) {
+            if (!first && on && open && st.flag(Store.F_EMERGENCY)) {
                 if (gav != ns.optBoolean("gav")) emergency(ctx, live, nowSec, a, "ГАВ " + a.gavName, gav, cur);
                 if (sgav != ns.optBoolean("sgav")) emergency(ctx, live, nowSec, a, "СГАВ " + a.sgavName, sgav, cur);
             }
@@ -77,6 +78,12 @@ final class Alerts {
             // for today and tomorrow, instead of separate "schedule changed" ones
             JSONObject qchg = ns.optJSONObject("qchg");
             ns.remove("qchg");
+            // Schedule / queue news that came outside the notification hours: shown when they start
+            JSONObject defer = ns.optJSONObject("defer");
+            if (defer == null) defer = new JSONObject();
+            boolean schedOn = on && st.flag(Store.F_SCHEDULE) && a.gpvId > 0;
+            String kt = today.toString();
+            String km = tomorrow.toString();
 
             // --- Schedule changed / tomorrow published ---
             if (a.gpvId > 0) {
@@ -87,30 +94,33 @@ final class Alerts {
 
                 int[] t = sch.slots(today, a.gpvId);
                 if (t == null) t = new int[48];
-                String kt = today.toString();
                 String ht = Arrays.toString(t);
                 // Only changes from now until midnight matter; the past part is ignored
                 if (tell && old.has(kt) && changedFrom(old.optString(kt), t, ni)) {
                     // same key as the earlier one for this day: the new text replaces the old
-                    show(ctx, live, endOfToday, Notifier.CH_SCHEDULE, "sch" + a.domId + kt,
-                            a.name + ": графік на сьогодні змінився",
-                            Status.restOfDay(t, ni), Status.color(Status.YELLOW));
+                    if (open) {
+                        show(ctx, live, endOfToday, Notifier.CH_SCHEDULE, "sch" + a.domId + kt,
+                                a.name + ": графік на сьогодні змінився",
+                                Status.restOfDay(t, ni), Status.color(Status.YELLOW));
+                    } else {
+                        defer.put("today", kt);
+                    }
                 }
                 fresh.put(kt, ht);
 
                 int[] m = sch.slots(tomorrow, a.gpvId);
-                String km = tomorrow.toString();
                 if (m != null) {
                     String hmh = Arrays.toString(m);
                     String date = tomorrow.format(DateTimeFormatter.ofPattern("dd.MM"));
-                    if (tell && !old.has(km)) {
-                        show(ctx, live, endOfToday + 86400, Notifier.CH_SCHEDULE, "sch" + a.domId + km,
-                                a.name + ": графік на завтра, " + date,
-                                Status.daySummary(m), Status.color(Status.GREEN));
-                    } else if (tell && !hmh.equals(old.optString(km))) {
-                        show(ctx, live, endOfToday + 86400, Notifier.CH_SCHEDULE, "sch" + a.domId + km,
-                                a.name + ": змінився графік на завтра, " + date,
-                                Status.daySummary(m), Status.color(Status.YELLOW));
+                    boolean isNew = !old.has(km);
+                    if (tell && (isNew || !hmh.equals(old.optString(km)))) {
+                        if (open) {
+                            show(ctx, live, endOfToday + 86400, Notifier.CH_SCHEDULE, "sch" + a.domId + km,
+                                    a.name + (isNew ? ": графік на завтра, " : ": змінився графік на завтра, ") + date,
+                                    Status.daySummary(m), Status.color(isNew ? Status.GREEN : Status.YELLOW));
+                        } else {
+                            defer.put("tm", km);
+                        }
                     }
                     fresh.put(km, hmh);
                 } else if (old.has(km)) {
@@ -119,24 +129,42 @@ final class Alerts {
                 ns.put("h", fresh);
             }
 
-            if (qchg != null && on && st.flag(Store.F_SCHEDULE) && a.gpvId > 0) {
-                int[] t = sch.slots(today, a.gpvId);
-                if (t == null) t = new int[48];
-                int[] m = sch.slots(tomorrow, a.gpvId);
-                String from = qchg.optString("from");
-                String title, was;
-                if (qchg.optBoolean("own")) {
-                    title = a.name + ": сайт тепер вказує чергу вашого будинку — ГПВ " + a.gpvName;
-                    was = "Досі була черга сусіднього будинку" + (from.isEmpty() ? "" : " (" + from + ")") + ".\n";
+            if (qchg != null && schedOn) {
+                if (open) {
+                    queueNote(ctx, live, a, qchg, sch, today, ni, endOfToday);
+                    defer = new JSONObject();   // the queue note already says it all
                 } else {
-                    title = a.name + ": зміна черги на ГПВ " + a.gpvName;
-                    was = from.isEmpty() ? "" : "Була черга " + from + ".\n";
+                    defer.put("q", qchg);
                 }
-                String text = was + Status.restOfDay(t, ni)
-                        + (m != null ? "\n\nЗавтра:\n" + Status.daySummary(m) : "");
-                show(ctx, live, endOfToday + 86400, Notifier.CH_SCHEDULE, "q:" + a.domId, title, text,
-                        Status.color(Status.YELLOW));
             }
+
+            // The notification hours have started: show what was postponed, with today's data
+            if (defer.length() > 0) {
+                if (!schedOn) {
+                    defer = new JSONObject();
+                } else if (open) {
+                    if (defer.has("q")) {
+                        queueNote(ctx, live, a, defer.getJSONObject("q"), sch, today, ni, endOfToday);
+                    } else {
+                        int[] t = sch.slots(today, a.gpvId);
+                        if (t == null) t = new int[48];
+                        int[] m = sch.slots(tomorrow, a.gpvId);
+                        String dt = defer.optString("today"), dm = defer.optString("tm");
+                        if (kt.equals(dt) || kt.equals(dm)) {   // (yesterday's "tomorrow" is today now)
+                            show(ctx, live, endOfToday, Notifier.CH_SCHEDULE, "sch" + a.domId + kt,
+                                    a.name + (kt.equals(dt) ? ": графік на сьогодні змінився" : ": графік на сьогодні"),
+                                    Status.restOfDay(t, ni), Status.color(Status.YELLOW));
+                        }
+                        if (km.equals(dm) && m != null) {
+                            show(ctx, live, endOfToday + 86400, Notifier.CH_SCHEDULE, "sch" + a.domId + km,
+                                    a.name + ": графік на завтра, " + tomorrow.format(DateTimeFormatter.ofPattern("dd.MM")),
+                                    Status.daySummary(m), Status.color(Status.GREEN));
+                        }
+                    }
+                    defer = new JSONObject();
+                }
+            }
+            ns.put("defer", defer);
 
             // --- Before an outage / power should be back ---
             if (on && !first && a.gpvId > 0) {
@@ -147,7 +175,7 @@ final class Alerts {
                             ZonedDateTime start = Status.timeOf(today, j);
                             long secs = Duration.between(now, start).getSeconds();
                             long mins = (secs + 59) / 60;
-                            if (mins <= lead) {
+                            if (mins <= lead && a.notifyAllowed(start)) {
                                 String key = "pre:" + a.domId + ":" + start.toEpochSecond();
                                 if (!st.wasSent(key)) {
                                     st.markSent(key);
@@ -170,7 +198,7 @@ final class Alerts {
                 if (st.flag(Store.F_RETURN) && !gav && !sgav && ni >= 1
                         && c[ni] < Schedule.OFF && c[ni - 1] >= Schedule.OFF) {
                     ZonedDateTime end = Status.timeOf(today, ni);
-                    if (Duration.between(end, now).toMinutes() < 20) {
+                    if (Duration.between(end, now).toMinutes() < 20 && a.notifyAllowed(end)) {
                         String key = "ret:" + a.domId + ":" + end.toEpochSecond();
                         if (!st.wasSent(key)) {
                             st.markSent(key);
@@ -200,6 +228,27 @@ final class Alerts {
             ns.put("live", live);
             st.saveNotifyState(a.domId, ns);
         }
+    }
+
+    /** "Дім: зміна черги на ГПВ 4.1" with the old queue and what it means for today and tomorrow. */
+    private static void queueNote(Context ctx, JSONObject live, Address a, JSONObject q, Schedule sch,
+                                  LocalDate today, int ni, long endOfToday) throws JSONException {
+        int[] t = sch.slots(today, a.gpvId);
+        if (t == null) t = new int[48];
+        int[] m = sch.slots(today.plusDays(1), a.gpvId);
+        String from = q.optString("from");
+        String title, was;
+        if (q.optBoolean("own")) {
+            title = a.name + ": сайт тепер вказує чергу вашого будинку — ГПВ " + a.gpvName;
+            was = "Досі була черга сусіднього будинку" + (from.isEmpty() ? "" : " (" + from + ")") + ".\n";
+        } else {
+            title = a.name + ": зміна черги на ГПВ " + a.gpvName;
+            was = from.isEmpty() ? "" : "Була черга " + from + ".\n";
+        }
+        String text = was + Status.restOfDay(t, ni)
+                + (m != null ? "\n\nЗавтра:\n" + Status.daySummary(m) : "");
+        show(ctx, live, endOfToday + 86400, Notifier.CH_SCHEDULE, "q:" + a.domId, title, text,
+                Status.color(Status.YELLOW));
     }
 
     /** Did any slot from "from" to midnight change? "saved" is Arrays.toString() of the old day. */

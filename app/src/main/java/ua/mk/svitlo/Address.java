@@ -4,8 +4,10 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /** A saved address and the outage queues it belongs to. */
 final class Address {
@@ -23,6 +25,12 @@ final class Address {
     /** Queues the website reported once but that differ from ours: "gpv:gav:sgav:own".
      *  They are taken only when the next check reports the same (the website sometimes glitches). */
     String pendQ = "";
+    /** When to notify: 0 = always (default), 1 = only on the chosen days between nfFrom and nfTo. */
+    int nfMode;
+    /** Minutes from midnight. nfTo before nfFrom = over midnight (e.g. 18:00–08:00); equal = all day. */
+    int nfFrom = 8 * 60, nfTo = 18 * 60;
+    /** Days: bit 0 = Monday … bit 6 = Sunday. Default Monday–Friday. */
+    int nfDays = 0b0011111;
     /** The four choices it was made from, so editing can start from them (0/"" = unknown). */
     long filId, nsId, stId;
     String nsName = "", stName = "", domName = "";
@@ -52,6 +60,10 @@ final class Address {
             o.put("qDom", qDomId);
             o.put("qDomN", qDomName);
             o.put("pendQ", pendQ);
+            o.put("nfM", nfMode);
+            o.put("nfF", nfFrom);
+            o.put("nfT", nfTo);
+            o.put("nfD", nfDays);
             o.put("fil", filId);
             o.put("ns", nsId);
             o.put("st", stId);
@@ -79,6 +91,10 @@ final class Address {
         a.qDomId = o.optLong("qDom");
         a.qDomName = o.optString("qDomN");
         a.pendQ = o.optString("pendQ");
+        a.nfMode = o.optInt("nfM", 0);
+        a.nfFrom = o.optInt("nfF", 8 * 60);
+        a.nfTo = o.optInt("nfT", 18 * 60);
+        a.nfDays = o.optInt("nfD", 0b0011111);
         a.filId = o.optLong("fil");
         a.nsId = o.optLong("ns");
         a.stId = o.optLong("st");
@@ -123,6 +139,53 @@ final class Address {
                 gpvName = n;
             }
         }
+    }
+
+    /** May this address notify at this moment? (Always, unless hours are set.) */
+    boolean notifyAllowed(ZonedDateTime t) {
+        if (nfMode == 0) return true;
+        int m = t.getHour() * 60 + t.getMinute();
+        int d = t.getDayOfWeek().getValue() - 1;   // 0 = Monday
+        if (nfFrom == nfTo) return onDay(d);
+        if (nfFrom < nfTo) return onDay(d) && m >= nfFrom && m < nfTo;
+        // over midnight: the evening part belongs to this day, the early morning to the day before
+        if (m >= nfFrom) return onDay(d);
+        if (m < nfTo) return onDay((d + 6) % 7);
+        return false;
+    }
+
+    private boolean onDay(int d) {
+        return (nfDays & (1 << d)) != 0;
+    }
+
+    /** When the allowed hours start next (to deliver postponed notifications); null = never. */
+    ZonedDateTime nextAllowed(ZonedDateTime now) {
+        int start = nfFrom == nfTo ? 0 : nfFrom;
+        for (int i = 0; i <= 8; i++) {
+            ZonedDateTime s = now.toLocalDate().plusDays(i).atStartOfDay(now.getZone()).plusMinutes(start);
+            if (s.isAfter(now) && notifyAllowed(s)) return s;
+        }
+        return null;
+    }
+
+    /** "пн–пт, 08:00–18:00"; "" when notifications are not limited. */
+    String notifyHoursText() {
+        if (nfMode == 0) return "";
+        String days;
+        if (nfDays == 0b1111111) days = "щодня";
+        else if (nfDays == 0b0011111) days = "пн–пт";
+        else if (nfDays == 0b1100000) days = "сб, нд";
+        else {
+            String[] n = {"пн", "вт", "ср", "чт", "пт", "сб", "нд"};
+            List<String> parts = new ArrayList<>();
+            for (int i = 0; i < 7; i++) if (onDay(i)) parts.add(n[i]);
+            days = String.join(", ", parts);
+        }
+        return days + ", " + (nfFrom == nfTo ? "цілодобово" : hm(nfFrom) + "–" + hm(nfTo));
+    }
+
+    static String hm(int minutes) {
+        return String.format(Locale.US, "%02d:%02d", minutes / 60, minutes % 60);
     }
 
     String queuesText() {

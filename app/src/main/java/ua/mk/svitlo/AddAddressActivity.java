@@ -16,9 +16,13 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textfield.TextInputLayout;
+import com.google.android.material.timepicker.MaterialTimePicker;
+import com.google.android.material.timepicker.TimeFormat;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -71,6 +75,9 @@ public class AddAddressActivity extends AppCompatActivity {
     static final String EXTRA_REPLACE = "replace_dom";
 
     private EditText etName;
+    // notification hours chosen on this screen (see Address.nfMode …)
+    private volatile int nfMode, nfFrom = 8 * 60, nfTo = 18 * 60, nfDays = 0b0011111;
+    private static final int[] DAY_BTN = {R.id.nf_d1, R.id.nf_d2, R.id.nf_d3, R.id.nf_d4, R.id.nf_d5, R.id.nf_d6, R.id.nf_d7};
     private Button btnSave;
     private TextView tvStatus;
 
@@ -138,7 +145,12 @@ public class AddAddressActivity extends AppCompatActivity {
             pendingName[2] = old.stName.isEmpty() ? null : old.stName;
             pendingName[3] = old.domName.isEmpty() ? null : old.domName;
             tvStatus.setText("Змініть те, що потрібно, і натисніть «Зберегти зміни».");
+            nfMode = old.nfMode;
+            nfFrom = old.nfFrom;
+            nfTo = old.nfTo;
+            nfDays = old.nfDays;
         }
+        setupNotifyHours();
         resetBelow(0);
         load(0, "/api/addr/filii");
         if (old != null && old.filId == 0 && !old.nsName.isEmpty()) findDistrict(old.nsName);
@@ -190,6 +202,55 @@ public class AddAddressActivity extends AppCompatActivity {
             boxes[i].setHelperText(null);
         }
         updateSave();
+    }
+
+    /** "Коли сповіщати": Завжди (default) / У певні години → from, to, days. */
+    private void setupNotifyHours() {
+        String[] modes = {"Завжди", "У певні години"};
+        MaterialAutoCompleteTextView ac = findViewById(R.id.ac_nf);
+        View box = findViewById(R.id.nf_box);
+        ac.setSimpleItems(modes);
+        ac.setText(modes[nfMode == 1 ? 1 : 0], false);
+        box.setVisibility(nfMode == 1 ? View.VISIBLE : View.GONE);
+        ac.setOnItemClickListener((parent, view, position, id) -> {
+            nfMode = position == 1 ? 1 : 0;
+            box.setVisibility(nfMode == 1 ? View.VISIBLE : View.GONE);
+        });
+
+        MaterialButton from = findViewById(R.id.btn_nf_from);
+        MaterialButton to = findViewById(R.id.btn_nf_to);
+        Runnable label = () -> {
+            from.setText("з " + Address.hm(nfFrom));
+            to.setText("до " + Address.hm(nfTo));
+        };
+        label.run();
+        from.setOnClickListener(v -> pickTime("Сповіщати з", nfFrom, m -> {
+            nfFrom = m;
+            label.run();
+        }));
+        to.setOnClickListener(v -> pickTime("Сповіщати до", nfTo, m -> {
+            nfTo = m;
+            label.run();
+        }));
+
+        MaterialButtonToggleGroup dg = findViewById(R.id.tg_nf_days);
+        for (int i = 0; i < 7; i++) if ((nfDays & (1 << i)) != 0) dg.check(DAY_BTN[i]);
+        dg.addOnButtonCheckedListener((group, id, isChecked) -> {
+            int d = 0;
+            for (int i = 0; i < 7; i++) if (group.getCheckedButtonIds().contains(DAY_BTN[i])) d |= 1 << i;
+            if (d != 0) nfDays = d;
+        });
+    }
+
+    private void pickTime(String title, int minutes, java.util.function.IntConsumer done) {
+        MaterialTimePicker p = new MaterialTimePicker.Builder()
+                .setTimeFormat(TimeFormat.CLOCK_24H)
+                .setHour(minutes / 60)
+                .setMinute(minutes % 60)
+                .setTitleText(title)
+                .build();
+        p.addOnPositiveButtonClickListener(v -> done.accept(p.getHour() * 60 + p.getMinute()));
+        p.show(getSupportFragmentManager(), "time");
     }
 
     private void updateSave() {
@@ -419,6 +480,10 @@ public class AddAddressActivity extends AppCompatActivity {
         a.name = custom;
         a.applyQueues(oq);
         a.queuesCheckedAt = System.currentTimeMillis();
+        a.nfMode = nfMode;
+        a.nfFrom = nfFrom;
+        a.nfTo = nfTo;
+        a.nfDays = nfDays;
         a.filId = sel[0] != null ? sel[0].id : 0;
         a.nsId = ns.id;
         a.stId = st.id;
