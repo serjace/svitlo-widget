@@ -7,7 +7,11 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.view.Gravity;
 import android.widget.ArrayAdapter;
+import android.widget.LinearLayout;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -17,7 +21,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textfield.TextInputLayout;
@@ -77,7 +81,6 @@ public class AddAddressActivity extends AppCompatActivity {
     private EditText etName;
     // notification hours chosen on this screen (see Address.nfMode …)
     private volatile int nfMode, nfFrom = 8 * 60, nfTo = 18 * 60, nfDays = 0b0011111;
-    private static final int[] DAY_BTN = {R.id.nf_d1, R.id.nf_d2, R.id.nf_d3, R.id.nf_d4, R.id.nf_d5, R.id.nf_d6, R.id.nf_d7};
     private Button btnSave;
     private TextView tvStatus;
 
@@ -204,17 +207,27 @@ public class AddAddressActivity extends AppCompatActivity {
         updateSave();
     }
 
-    /** "Коли сповіщати": Завжди (default) / У певні години → from, to, days. */
+    /** "Коли сповіщати": Завжди (default) / Лише в певні години / Крім певних годин → from, to, days. */
     private void setupNotifyHours() {
-        String[] modes = {"Завжди", "У певні години"};
+        String[] modes = {"Завжди", "Лише в певні години", "Крім певних годин"};
         MaterialAutoCompleteTextView ac = findViewById(R.id.ac_nf);
         View box = findViewById(R.id.nf_box);
+        TextView hint = findViewById(R.id.nf_hint);
+        Runnable showMode = () -> {
+            box.setVisibility(nfMode == 0 ? View.GONE : View.VISIBLE);
+            hint.setText(nfMode == 2
+                    ? "У ці дні й години сповіщень з цієї адреси не буде (наприклад, поки ви на роботі). "
+                    + "Зміни графіка чи черги, що трапились у цей час, прийдуть після нього."
+                    : "В інший час сповіщень з цієї адреси не буде. Зміни графіка чи черги, "
+                    + "що трапились поза цими годинами, прийдуть, коли години почнуться.");
+        };
+        if (nfMode < 0 || nfMode > 2) nfMode = 0;
         ac.setSimpleItems(modes);
-        ac.setText(modes[nfMode == 1 ? 1 : 0], false);
-        box.setVisibility(nfMode == 1 ? View.VISIBLE : View.GONE);
+        ac.setText(modes[nfMode], false);
+        showMode.run();
         ac.setOnItemClickListener((parent, view, position, id) -> {
-            nfMode = position == 1 ? 1 : 0;
-            box.setVisibility(nfMode == 1 ? View.VISIBLE : View.GONE);
+            nfMode = Math.max(0, Math.min(2, position));
+            showMode.run();
         });
 
         MaterialButton from = findViewById(R.id.btn_nf_from);
@@ -224,22 +237,56 @@ public class AddAddressActivity extends AppCompatActivity {
             to.setText("до " + Address.hm(nfTo));
         };
         label.run();
-        from.setOnClickListener(v -> pickTime("Сповіщати з", nfFrom, m -> {
+        from.setOnClickListener(v -> pickTime("З якої години", nfFrom, m -> {
             nfFrom = m;
             label.run();
         }));
-        to.setOnClickListener(v -> pickTime("Сповіщати до", nfTo, m -> {
+        to.setOnClickListener(v -> pickTime("До якої години", nfTo, m -> {
             nfTo = m;
             label.run();
         }));
 
-        MaterialButtonToggleGroup dg = findViewById(R.id.tg_nf_days);
-        for (int i = 0; i < 7; i++) if ((nfDays & (1 << i)) != 0) dg.check(DAY_BTN[i]);
-        dg.addOnButtonCheckedListener((group, id, isChecked) -> {
-            int d = 0;
-            for (int i = 0; i < 7; i++) if (group.getCheckedButtonIds().contains(DAY_BTN[i])) d |= 1 << i;
-            if (d != 0) nfDays = d;
-        });
+        // Пн … Нд as seven equal buttons: filled = chosen
+        LinearLayout days = findViewById(R.id.nf_days);
+        String[] names = {"Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"};
+        float dp = getResources().getDisplayMetrics().density;
+        int onBg = MaterialColors.getColor(days, com.google.android.material.R.attr.colorSecondaryContainer);
+        int onText = MaterialColors.getColor(days, com.google.android.material.R.attr.colorOnSecondaryContainer);
+        int offText = MaterialColors.getColor(days, com.google.android.material.R.attr.colorOnSurfaceVariant);
+        int line = MaterialColors.getColor(days, com.google.android.material.R.attr.colorOutline);
+        TextView[] cells = new TextView[7];
+        Runnable paint = () -> {
+            for (int i = 0; i < 7; i++) {
+                boolean on = (nfDays & (1 << i)) != 0;
+                GradientDrawable bg = new GradientDrawable();
+                bg.setCornerRadius(14 * dp);
+                bg.setColor(on ? onBg : 0);
+                bg.setStroke((int) (1 * dp + 0.5f), on ? onBg : line);
+                cells[i].setBackground(bg);
+                cells[i].setTextColor(on ? onText : offText);
+                cells[i].setSelected(on);
+            }
+        };
+        for (int i = 0; i < 7; i++) {
+            final int bit = 1 << i;
+            TextView c = new TextView(this);
+            c.setText(names[i]);
+            c.setGravity(Gravity.CENTER);
+            c.setTextSize(16);
+            c.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            c.setMinHeight((int) (48 * dp));
+            c.setContentDescription(names[i]);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+            lp.setMargins((int) (2 * dp), 0, (int) (2 * dp), 0);
+            c.setOnClickListener(v -> {
+                int d = nfDays ^ bit;
+                if (d != 0) nfDays = d;   // at least one day stays chosen
+                paint.run();
+            });
+            cells[i] = c;
+            days.addView(c, lp);
+        }
+        paint.run();
     }
 
     private void pickTime(String title, int minutes, java.util.function.IntConsumer done) {

@@ -8,11 +8,14 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.media.AudioAttributes;
+import android.net.Uri;
 import android.os.Build;
 
 final class Notifier {
-    static final String CH_OUTAGE = "outages";
-    static final String CH_SCHEDULE = "schedule";
+    // "_v2": a channel's sound can't be changed once created, so new ones carry the app's sound
+    static final String CH_OUTAGE = "outages_v2";
+    static final String CH_SCHEDULE = "schedule_v2";
     static final String CH_UPDATE = "updates";
     private static final String KEY_UPDATE = "app-update";
 
@@ -21,12 +24,26 @@ final class Notifier {
     static void createChannels(Context ctx) {
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);
         if (nm == null) return;
+        nm.deleteNotificationChannel("outages");    // the old ones, without the sound
+        nm.deleteNotificationChannel("schedule");
+        // High importance = pops up on top of the screen, with sound and vibration
+        Uri sound = Uri.parse("android.resource://" + ctx.getPackageName() + "/" + R.raw.notify);
+        AudioAttributes audio = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build();
         NotificationChannel out = new NotificationChannel(CH_OUTAGE, "Відключення світла",
                 NotificationManager.IMPORTANCE_HIGH);
         out.setDescription("Попередження перед відключенням, повернення світла, аварійні відключення");
-        NotificationChannel sch = new NotificationChannel(CH_SCHEDULE, "Зміни графіка",
-                NotificationManager.IMPORTANCE_DEFAULT);
-        sch.setDescription("Графік змінено або опубліковано графік на завтра");
+        out.setSound(sound, audio);
+        out.enableVibration(true);
+        out.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+        NotificationChannel sch = new NotificationChannel(CH_SCHEDULE, "Зміни графіка і черги",
+                NotificationManager.IMPORTANCE_HIGH);
+        sch.setDescription("Графік змінено, змінилася черга або опубліковано графік на завтра");
+        sch.setSound(sound, audio);
+        sch.enableVibration(true);
+        sch.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
         NotificationChannel upd = new NotificationChannel(CH_UPDATE, "Оновлення застосунку",
                 NotificationManager.IMPORTANCE_DEFAULT);
         upd.setDescription("Нова версія застосунку «Світло»");

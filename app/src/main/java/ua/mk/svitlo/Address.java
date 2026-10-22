@@ -25,7 +25,8 @@ final class Address {
     /** Queues the website reported once but that differ from ours: "gpv:gav:sgav:own".
      *  They are taken only when the next check reports the same (the website sometimes glitches). */
     String pendQ = "";
-    /** When to notify: 0 = always (default), 1 = only on the chosen days between nfFrom and nfTo. */
+    /** When to notify: 0 = always (default), 1 = only on the chosen days between nfFrom and nfTo,
+     *  2 = always except then (e.g. home: everything but working hours). */
     int nfMode;
     /** Minutes from midnight. nfTo before nfFrom = over midnight (e.g. 18:00–08:00); equal = all day. */
     int nfFrom = 8 * 60, nfTo = 18 * 60;
@@ -144,6 +145,11 @@ final class Address {
     /** May this address notify at this moment? (Always, unless hours are set.) */
     boolean notifyAllowed(ZonedDateTime t) {
         if (nfMode == 0) return true;
+        return nfMode == 2 ? !inHours(t) : inHours(t);
+    }
+
+    /** Is this moment inside the chosen days and hours? */
+    private boolean inHours(ZonedDateTime t) {
         int m = t.getHour() * 60 + t.getMinute();
         int d = t.getDayOfWeek().getValue() - 1;   // 0 = Monday
         if (nfFrom == nfTo) return onDay(d);
@@ -160,10 +166,15 @@ final class Address {
 
     /** When the allowed hours start next (to deliver postponed notifications); null = never. */
     ZonedDateTime nextAllowed(ZonedDateTime now) {
-        int start = nfFrom == nfTo ? 0 : nfFrom;
+        // allowed time can only begin at midnight, at "from" or at "to"
         for (int i = 0; i <= 8; i++) {
-            ZonedDateTime s = now.toLocalDate().plusDays(i).atStartOfDay(now.getZone()).plusMinutes(start);
-            if (s.isAfter(now) && notifyAllowed(s)) return s;
+            ZonedDateTime day = now.toLocalDate().plusDays(i).atStartOfDay(now.getZone());
+            ZonedDateTime best = null;
+            for (int min : new int[]{0, nfFrom, nfTo}) {
+                ZonedDateTime s = day.plusMinutes(min);
+                if (s.isAfter(now) && notifyAllowed(s) && (best == null || s.isBefore(best))) best = s;
+            }
+            if (best != null) return best;
         }
         return null;
     }
@@ -181,7 +192,8 @@ final class Address {
             for (int i = 0; i < 7; i++) if (onDay(i)) parts.add(n[i]);
             days = String.join(", ", parts);
         }
-        return days + ", " + (nfFrom == nfTo ? "цілодобово" : hm(nfFrom) + "–" + hm(nfTo));
+        String when = days + ", " + (nfFrom == nfTo ? "цілодобово" : hm(nfFrom) + "–" + hm(nfTo));
+        return nfMode == 2 ? "крім " + when : when;
     }
 
     static String hm(int minutes) {
