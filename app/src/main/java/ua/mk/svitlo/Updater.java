@@ -16,7 +16,13 @@ import org.json.JSONObject;
 
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * The heart of the app: download fresh data, send notifications,
@@ -65,20 +71,40 @@ final class Updater {
     }
 
     static boolean fetchAll(Store st, boolean queuesNow) {
+        List<Address> list = st.addresses();
+        // Everything is downloaded at the same time, so the radio is busy for a few seconds
+        // instead of one request after another: the schedule, the queue flags and, for each
+        // address, its emergencies and planned works on www.energy.mk.ua (if that site doesn't
+        // answer, the last known list stays).
+        String cachedTs = st.cache("ts");
+        String[] paths = {cachedTs == null ? "/api/schedule/time-series" : null, "/api/v2/schedule/active",
+                "/api/outage-queue/by-type/1", "/api/outage-queue/by-type/2", "/api/outage-queue/by-type/3"};
+        String[] got = new String[paths.length];
+        List<Runnable> jobs = new ArrayList<>();
+        for (int i = 0; i < paths.length; i++) {
+            if (paths[i] == null) continue;
+            final int k = i;
+            jobs.add(() -> {
+                try {
+                    got[k] = Api.get(paths[k]);
+                } catch (Exception ignored) {
+                }
+            });
+        }
+        for (Address a : list) {
+            jobs.add(() -> {
+                try {
+                    st.saveWorks(a.domId, Works.fetch(a.domId));
+                } catch (Exception ignored) {
+                }
+            });
+        }
+        parallel(jobs);
         try {
-            String ts = st.cache("ts");
-            if (ts == null) ts = Api.get("/api/schedule/time-series");
-            String active = Api.get("/api/v2/schedule/active");
-            String q1 = Api.get("/api/outage-queue/by-type/1");
-            String q2 = Api.get("/api/outage-queue/by-type/2");
-            String q3 = Api.get("/api/outage-queue/by-type/3");
+            String ts = cachedTs != null ? cachedTs : got[0];
             // make sure everything is valid before saving
-            new JSONArray(ts);
-            new JSONArray(active);
-            new JSONArray(q1);
-            new JSONArray(q2);
-            new JSONArray(q3);
-            st.saveCache(ts, active, q1, q2, q3);
+            for (int i = 0; i < got.length; i++) new JSONArray(i == 0 ? ts : got[i]);
+            st.saveCache(ts, got[1], got[2], got[3], got[4]);
         } catch (Exception e) {
             st.setLastError(System.currentTimeMillis());
             return false;
@@ -86,75 +112,90 @@ final class Updater {
 
         // Re-check which queues each address belongs to every 30 minutes and whenever the app is
         // opened or refreshed: queues get reassigned after damage to the grid. One small request
-        // per address. A change counts only when two checks in a row agree.
+        // per address (all at once). A change counts only when two checks in a row agree.
         long now = System.currentTimeMillis();
-        List<Address> list = st.addresses();
-        boolean changed = false;
+        AtomicBoolean changed = new AtomicBoolean();
+        jobs.clear();
         for (Address a : list) {
             boolean due = queuesNow || !a.pendQ.isEmpty() || now - a.queuesCheckedAt >= 30 * 60 * 1000L;
-            if (!due) continue;
-            try {
-                boolean own = false;
-                JSONArray oq = null;
-                if (a.qDomId > 0 && a.qDomId != a.domId) {
-                    // borrowed from a neighbour: does the website list queues for the house itself now?
-                    JSONArray mine = Api.getArray("/api/addr/dom/" + a.domId + "/outage-queue");
-                    if (mine.length() > 0) {
-                        oq = mine;
-                        own = true;
-                    }
-                }
-                if (oq == null) oq = Api.getArray("/api/addr/dom/" + a.queueSource() + "/outage-queue");
-                a.queuesCheckedAt = now;
-                changed = true;
-                if (oq.length() == 0) {   // a glitch: keep what we have
-                    a.pendQ = "";
-                    continue;
-                }
-                Address fresh = new Address();
-                fresh.applyQueues(oq);
-                if (!own && fresh.gpvId == a.gpvId && fresh.gavId == a.gavId && fresh.sgavId == a.sgavId) {
-                    a.applyQueues(oq);   // the same queues (names may be spelled differently)
-                    a.pendQ = "";
-                    continue;
-                }
-                String seen = fresh.gpvId + ":" + fresh.gavId + ":" + fresh.sgavId + ":" + (own ? 1 : 0);
-                if (!seen.equals(a.pendQ)) {   // first time: wait for the next check to confirm
-                    a.pendQ = seen;
-                    continue;
-                }
-                // confirmed: take the new queues
-                a.pendQ = "";
-                int oldGpv = a.gpvId;
-                String oldName = a.gpvName;
-                a.applyQueues(oq);
-                if (own) {
-                    a.qDomId = 0;
-                    a.qDomName = "";
-                }
-                // ГАВ / СГАВ change silently; a new ГПВ queue gets a notification (Alerts)
-                if (own || a.gpvId != oldGpv) {
-                    JSONObject ns = st.notifyState(a.domId);
-                    JSONObject ev = new JSONObject();
-                    ev.put("from", oldGpv > 0 ? oldName : "");
-                    ev.put("own", own);
-                    ns.put("qchg", ev);
-                    st.saveNotifyState(a.domId, ns);
-                }
-            } catch (Exception ignored) {
-            }
+            if (due) jobs.add(() -> {
+                if (checkQueues(st, a, now)) changed.set(true);
+            });
         }
-        if (changed) st.saveAddresses(list);
-
-        // Emergencies and planned works on www.energy.mk.ua: one small request per address,
-        // as often as the schedule. If the site doesn't answer, the last known list stays.
-        for (Address a : list) {
-            try {
-                st.saveWorks(a.domId, Works.fetch(a.domId));
-            } catch (Exception ignored) {
-            }
-        }
+        parallel(jobs);
+        if (changed.get()) st.saveAddresses(list);
         return true;
+    }
+
+    /** One address's queue check (see fetchAll). @return the address was changed */
+    private static boolean checkQueues(Store st, Address a, long now) {
+        boolean changed = false;
+        try {
+            boolean own = false;
+            JSONArray oq = null;
+            if (a.qDomId > 0 && a.qDomId != a.domId) {
+                // borrowed from a neighbour: does the website list queues for the house itself now?
+                JSONArray mine = Api.getArray("/api/addr/dom/" + a.domId + "/outage-queue");
+                if (mine.length() > 0) {
+                    oq = mine;
+                    own = true;
+                }
+            }
+            if (oq == null) oq = Api.getArray("/api/addr/dom/" + a.queueSource() + "/outage-queue");
+            a.queuesCheckedAt = now;
+            changed = true;
+            if (oq.length() == 0) {   // a glitch: keep what we have
+                a.pendQ = "";
+                return true;
+            }
+            Address fresh = new Address();
+            fresh.applyQueues(oq);
+            if (!own && fresh.gpvId == a.gpvId && fresh.gavId == a.gavId && fresh.sgavId == a.sgavId) {
+                a.applyQueues(oq);   // the same queues (names may be spelled differently)
+                a.pendQ = "";
+                return true;
+            }
+            String seen = fresh.gpvId + ":" + fresh.gavId + ":" + fresh.sgavId + ":" + (own ? 1 : 0);
+            if (!seen.equals(a.pendQ)) {   // first time: wait for the next check to confirm
+                a.pendQ = seen;
+                return true;
+            }
+            // confirmed: take the new queues
+            a.pendQ = "";
+            int oldGpv = a.gpvId;
+            String oldName = a.gpvName;
+            a.applyQueues(oq);
+            if (own) {
+                a.qDomId = 0;
+                a.qDomName = "";
+            }
+            // ГАВ / СГАВ change silently; a new ГПВ queue gets a notification (Alerts)
+            if (own || a.gpvId != oldGpv) {
+                JSONObject ns = st.notifyState(a.domId);
+                JSONObject ev = new JSONObject();
+                ev.put("from", oldGpv > 0 ? oldName : "");
+                ev.put("own", own);
+                ns.put("qchg", ev);
+                st.saveNotifyState(a.domId, ns);
+            }
+        } catch (Exception ignored) {
+        }
+        return changed;
+    }
+
+    /** Runs the jobs at the same time and waits for all of them (at most a minute). */
+    private static void parallel(List<Runnable> jobs) {
+        if (jobs.isEmpty()) return;
+        ExecutorService ex = Executors.newFixedThreadPool(Math.min(jobs.size(), 8));
+        try {
+            List<Callable<Object>> cs = new ArrayList<>();
+            for (Runnable r : jobs) cs.add(Executors.callable(r));
+            ex.invokeAll(cs, 60, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            ex.shutdownNow();
+        }
     }
 
     /**

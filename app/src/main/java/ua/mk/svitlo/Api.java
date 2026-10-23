@@ -42,7 +42,14 @@ final class Api {
                 }
             }
             int code = c.getResponseCode();
-            if (code != 200) throw new IOException("HTTP " + code);
+            if (code != 200) {
+                InputStream err = c.getErrorStream();
+                if (err != null) err.close();
+                throw new IOException("HTTP " + code);
+            }
+            // Read to the end and close the stream, but don't disconnect(): Android then keeps
+            // the connection open for the next request to the same site, which saves setting up
+            // a new secure connection every time (slow and costly on mobile data).
             try (InputStream in = c.getInputStream()) {
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
                 byte[] buf = new byte[8192];
@@ -50,8 +57,9 @@ final class Api {
                 while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
                 return out.toString("UTF-8");
             }
-        } finally {
-            c.disconnect();
+        } catch (IOException e) {
+            c.disconnect();   // a broken connection must not be used again
+            throw e;
         }
     }
 
