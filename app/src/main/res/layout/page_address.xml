@@ -124,6 +124,41 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Planned works (www.energy.mk.ua) starting later today or tomorrow -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_works"
+            style="?attr/materialCardViewFilledStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:visibility="gone"
+            app:cardCornerRadius="24dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/m_works_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center"
+                    android:text="Планові роботи"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="21sp" />
+
+                <LinearLayout
+                    android:id="@+id/m_works"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- Coming hours -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/card_next"

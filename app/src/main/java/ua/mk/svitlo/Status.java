@@ -27,7 +27,10 @@ final class Status {
     /** Very short, for the 2×2 widget: "до 14:00". */
     String shortDetail = "";
     int nowIdx;
-    /** Upcoming periods: {start, end (-1 = unknown), level, emergency 0/1}, slot indexes from today 00:00. */
+    /** An emergency or planned work from www.energy.mk.ua happening now (it decides the status), or null. */
+    Works.Work work;
+    /** Upcoming periods: {start, end (-1 = unknown), level, 0 / 1 emergency / 2 planned works},
+     *  slot indexes from today 00:00. */
     final List<int[]> next = new ArrayList<>();
 
     /** Fixed accent colour (used for notifications). */
@@ -153,7 +156,7 @@ final class Status {
 
     /** Text column of a period row. */
     static String rowLabel(int[] r) {
-        String n = r[3] == 1 ? "Аварійне відключення" : Timeline.name(r[2]);
+        String n = r[3] == 1 ? "Аварійне відключення" : r[3] == 2 ? "Планові роботи" : Timeline.name(r[2]);
         if (r[0] >= 48) n += " · завтра";
         return n;
     }
@@ -297,6 +300,24 @@ final class Status {
         // The website's "outage now" flag for ГПВ queues often stays on long after an outage
         // ends, so the hourly schedule alone decides. Only ГАВ/СГАВ emergency flags are used.
         int from = ni;   // where the regular list of periods starts
+        long nowSec = now.toEpochSecond();
+        List<Works.Work> ws = sch.works(a.domId);
+
+        // An emergency registered for this house on www.energy.mk.ua: that's what is happening,
+        // whatever the schedule says. Reason and the estimated time, no schedule texts.
+        Works.Work em = Works.now(ws, Works.EMERGENCY, nowSec);
+        if (em != null) {
+            s.work = em;
+            s.level = RED;
+            s.title = "Аварійне відключення";
+            boolean late = em.overdue(nowSec);
+            String until = late ? "Час відновлення уточнюється" : "Орієнтовно до " + Works.at(em.end, now);
+            s.set(until, em.reason, until, late ? "час відновлення уточнюється" : "до " + Works.at(em.end, now));
+            int end = late ? -1 : Works.slotUp(em.end, today);
+            s.next.add(new int[]{ni, end, RED, 1});
+            if (end > ni) s.addPeriods(c, end);   // what the schedule says after it ("Найближчі години")
+            return s;
+        }
 
         if (!gav && !sgav && a.gpvId == 0) {
             // Without a queue we know nothing — never pretend there is light.
@@ -327,15 +348,37 @@ final class Status {
             s.title = "Світло є";
         }
 
-        int i = from;
-        while (i < 96 && c[i] >= 0 && s.next.size() < 6) {
-            int lvl = Timeline.level(c[i]);
-            int e = i;
-            while (e < 96 && c[e] >= 0 && Timeline.level(c[e]) == lvl) e++;
-            s.next.add(new int[]{i, e, lvl, 0});
-            i = e;
+        s.addPeriods(c, from);
+
+        // Planned works now (and the schedule doesn't say worse): their own status. The light
+        // may go off for a while, not necessarily for the whole time.
+        Works.Work pw = gav || sgav || code >= Schedule.OFF ? null : Works.now(ws, Works.PLANNED, nowSec);
+        if (pw != null) {
+            s.work = pw;
+            s.level = YELLOW;
+            s.title = "Планові роботи";
+            String until = "Можливе відключення до " + Works.at(pw.end, now);
+            s.set(until, pw.reason, until, "до " + Works.at(pw.end, now));
+            s.shown = 1;
+            if (s.next.size() > 1 && s.next.get(1)[2] == RED) {
+                int[] nx = s.next.get(1);
+                s.line3 = "За графіком: " + lower(change(RED, s.next.get(0)[2], nx[0]));
+            }
+            return s;
         }
         if (!gav && !sgav) s.describe(now, today, c);
         return s;
+    }
+
+    /** The schedule's periods from slot "from" on (up to 6 in all). */
+    private void addPeriods(int[] c, int from) {
+        int i = from;
+        while (i < 96 && c[i] >= 0 && next.size() < 6) {
+            int lvl = Timeline.level(c[i]);
+            int e = i;
+            while (e < 96 && c[e] >= 0 && Timeline.level(c[e]) == lvl) e++;
+            next.add(new int[]{i, e, lvl, 0});
+            i = e;
+        }
     }
 }

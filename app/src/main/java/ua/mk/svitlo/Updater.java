@@ -145,6 +145,15 @@ final class Updater {
             }
         }
         if (changed) st.saveAddresses(list);
+
+        // Emergencies and planned works on www.energy.mk.ua: one small request per address,
+        // as often as the schedule. If the site doesn't answer, the last known list stays.
+        for (Address a : list) {
+            try {
+                st.saveWorks(a.domId, Works.fetch(a.domId));
+            } catch (Exception ignored) {
+            }
+        }
         return true;
     }
 
@@ -183,6 +192,17 @@ final class Updater {
                             break;
                         }
                     }
+                }
+            }
+        }
+
+        // an emergency or planned work starts or ends (or its "уточнюється" time runs out)
+        long nowSec = now.toEpochSecond();
+        for (Address a : st.addresses()) {
+            for (Works.Work w : sch.works(a.domId)) {
+                for (long t : new long[]{w.start, w.end, w.shownUntil()}) {
+                    ZonedDateTime z = ZonedDateTime.ofInstant(java.time.Instant.ofEpochSecond(t + 5), Schedule.ZONE);
+                    if (t > nowSec && z.isBefore(next)) next = z;
                 }
             }
         }

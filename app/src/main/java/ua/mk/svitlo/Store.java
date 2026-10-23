@@ -68,7 +68,7 @@ final class Store {
             if (it.next().domId == domId) it.remove();
         }
         saveAddresses(list);
-        p.edit().remove("ns_" + domId).apply();
+        p.edit().remove("ns_" + domId).remove("c_w_" + domId).apply();
     }
 
     /** An address was changed to another house: move widget links and the "shown" mark to it. */
@@ -82,6 +82,7 @@ final class Store {
         }
         if (p.getLong("active", -1) == oldDom) e.putLong("active", newDom);
         e.remove("ns_" + oldDom);
+        e.remove("c_w_" + oldDom);
         e.apply();
     }
 
@@ -220,6 +221,15 @@ final class Store {
 
     long fetchedAt() {
         return p.getLong("c_time", 0);
+    }
+
+    /** Emergencies and planned works of one house (www.energy.mk.ua), as the website sent them. */
+    String works(long domId) {
+        return p.getString("c_w_" + domId, null);
+    }
+
+    void saveWorks(long domId, String json) {
+        p.edit().putString("c_w_" + domId, json).apply();
     }
 
     long lastError() {

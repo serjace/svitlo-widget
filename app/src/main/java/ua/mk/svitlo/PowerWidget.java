@@ -15,6 +15,7 @@ import android.widget.RemoteViews;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -183,7 +184,14 @@ public class PowerWidget extends AppWidgetProvider {
         }
 
         v.setImageViewResource(R.id.w_icon, Timeline.iconRes(s.level));
-        float statusSize = Fit.size(ctx, s.title, 31 * k, 22 * k, inner > 0 ? inner - 42 : 0, true, 1);
+        String title = s.title;
+        float titleW = inner > 0 ? inner - 42 : 0;
+        // "Аварійне відключення" is long: a narrow widget says just "Аварія"
+        if (s.work != null && s.work.emergency() && !Fit.fits(ctx, title, 22 * k, titleW, true, 1)) {
+            title = "Аварія";
+            v.setTextViewText(R.id.w_status, title);
+        }
+        float statusSize = Fit.size(ctx, title, 31 * k, 22 * k, titleW, true, 1);
         size(v, R.id.w_status, statusSize);
 
         // Next change: with the countdown if it fits, otherwise just the time
@@ -194,21 +202,36 @@ public class PowerWidget extends AppWidgetProvider {
         v.setTextViewText(R.id.w_detail, detail);
         size(v, R.id.w_detail, detailSize);
 
-        // What comes after that; a taller widget shows more of the coming periods
+        // What comes after that; a taller widget shows more of the coming periods.
+        // An emergency / planned works: the reason first (up to 2 lines). During an emergency
+        // the schedule doesn't matter, so nothing else.
         float rowSize = 17 * k;
         float used = 20 + 34 + 2 + Math.max(40, Fit.lineDp(statusSize)) + Fit.lineDp(detailSize) + 4 + 4;
         int rows = hDp == 0 ? 2 : (int) Math.max(0, Math.min(ROWS.length,
                 (hDp - used) / (Fit.lineDp(rowSize) + 1)));
-        List<int[]> up = s.after(ROWS.length);
+        List<String> texts = new ArrayList<>();
+        boolean reason = s.work != null && !s.work.reason.isEmpty();
+        if (reason) texts.add(s.work.reason);
+        if (s.work == null || !s.work.emergency()) {
+            for (int[] r : s.after(ROWS.length)) {
+                texts.add(Status.rowTime(r, s.nowIdx) + "  " + Status.rowLabel(r).toLowerCase());
+            }
+        }
+        int room = rows;
         for (int n = 0; n < ROWS.length; n++) {
-            if (n < up.size() && n < rows) {
-                int[] r = up.get(n);
-                String text = Status.rowTime(r, s.nowIdx) + "  " + Status.rowLabel(r).toLowerCase();
+            String text = n < texts.size() ? texts.get(n) : null;
+            int lines = n == 0 && reason ? 2 : 1;
+            float sz = text == null ? rowSize : Fit.size(ctx, text, rowSize, 12 * k, inner, false, lines);
+            if (lines == 2 && (room == 1 || Fit.fits(ctx, text, sz, inner, false, 1))) lines = 1;
+            if (text != null && room >= lines) {
+                room -= lines;
                 v.setViewVisibility(ROWS[n], View.VISIBLE);
                 v.setTextViewText(ROWS[n], text);
+                v.setInt(ROWS[n], "setMaxLines", lines);
                 v.setTextColor(ROWS[n], soft(on, 0xF2));
-                size(v, ROWS[n], Fit.size(ctx, text, rowSize, 12 * k, inner, false, 1));
+                size(v, ROWS[n], sz);
             } else {
+                room = 0;
                 v.setViewVisibility(ROWS[n], View.GONE);
             }
         }

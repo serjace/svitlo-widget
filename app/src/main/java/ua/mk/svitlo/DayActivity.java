@@ -137,6 +137,7 @@ public class DayActivity extends AppCompatActivity {
                 card.setVisibility(View.GONE);
                 return;
             }
+            slots = Works.paint(slots, sch.works(a.domId), date, now);   // emergencies / planned works too
             summary.setText(Status.daySummary(slots));
             grid.setVisibility(View.VISIBLE);
             grid.setData(slots, day == 0 ? now.getHour() : -1);

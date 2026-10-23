@@ -6,7 +6,9 @@ import org.json.JSONObject;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -23,6 +25,7 @@ final class Schedule {
 
     final Map<LocalDate, Map<Integer, int[]>> days = new HashMap<>();
     final Map<Integer, Boolean> enabled = new HashMap<>();
+    final Map<Long, List<Works.Work>> works = new HashMap<>();
     boolean hasData;
 
     private static ZoneId zone() {
@@ -101,7 +104,14 @@ final class Schedule {
             s.enabled.clear();
             s.hasData = false;
         }
+        for (Address x : st.addresses()) s.works.put(x.domId, Works.parse(st.works(x.domId)));
         return s;
+    }
+
+    /** Emergencies and planned works of this house (www.energy.mk.ua); empty when none. */
+    List<Works.Work> works(long domId) {
+        List<Works.Work> w = works.get(domId);
+        return w != null ? w : Collections.emptyList();
     }
 
     boolean hasDay(LocalDate d) {

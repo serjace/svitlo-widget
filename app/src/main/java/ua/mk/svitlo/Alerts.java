@@ -53,11 +53,19 @@ final class Alerts {
             JSONObject live = ns.optJSONObject("live");
             if (live == null) live = new JSONObject();
             Set<String> starts = outageStarts(c, today);
+            // emergencies registered on www.energy.mk.ua that are going on now
+            List<Works.Work> works = sch.works(a.domId);
+            Works.Work emNow = Works.now(works, Works.EMERGENCY, nowSec);
+            Set<String> emKeys = new HashSet<>();
+            for (Works.Work w : works) if (w.emergency() && w.showing(nowSec)) emKeys.add("ew:" + a.domId + ":" + w.id);
             for (String k : keysOf(live)) {
                 long until = live.optLong(k);
                 boolean stale = until > 0 && nowSec >= until;
                 // a warning for an outage that is no longer in the schedule
                 if (k.startsWith("pre:") && !starts.contains(k.substring(k.lastIndexOf(':') + 1))) stale = true;
+                // an emergency that is over (or the warning while one goes on)
+                if (k.startsWith("ew:") && !emKeys.contains(k)) stale = true;
+                if (emNow != null && (k.startsWith("pre:") || k.startsWith("ret:"))) stale = true;
                 if (stale) {
                     Notifier.cancel(ctx, k);
                     live.remove(k);
@@ -73,6 +81,33 @@ final class Alerts {
             }
             ns.put("gav", gav);
             ns.put("sgav", sgav);
+
+            // --- Emergencies on www.energy.mk.ua: when one starts, and when the estimated time
+            //     the light is back moves later. Not when it's back or the time gets shorter. ---
+            JSONObject ew = ns.optJSONObject("ew");   // {record id: the latest end we told about}
+            if (ew == null) ew = new JSONObject();
+            JSONObject ewNow = new JSONObject();
+            boolean tellEm = !first && on && open && st.flag(Store.F_EMERGENCY);
+            for (Works.Work w : works) {
+                if (!w.emergency() || !w.showing(nowSec)) continue;
+                String id = String.valueOf(w.id);
+                long known = ew.optLong(id, -1);
+                String key = "ew:" + a.domId + ":" + id;
+                String why = w.reason.isEmpty() ? "" : w.reason + ".\n";
+                if (tellEm && known < 0) {
+                    show(ctx, live, 0, Notifier.CH_OUTAGE, key, a.name + ": аварійне відключення",
+                            why + (w.overdue(nowSec) ? "Час відновлення уточнюється."
+                                    : "Орієнтовно до " + Works.at(w.end, now) + "."),
+                            Status.color(Status.RED));
+                } else if (tellEm && w.end > known + 60) {
+                    show(ctx, live, 0, Notifier.CH_OUTAGE, key, a.name + ": відновлення світла перенесли",
+                            "Орієнтовно до " + Works.at(w.end, now) + " (було до " + Works.at(known, now) + ").\n"
+                                    + why.trim(),
+                            Status.color(Status.RED));
+                }
+                ewNow.put(id, Math.max(known, w.end));
+            }
+            ns.put("ew", ewNow);
 
             // A new ГПВ queue (found by Updater): one notification that also says what it means
             // for today and tomorrow, instead of separate "schedule changed" ones
@@ -166,8 +201,8 @@ final class Alerts {
             }
             ns.put("defer", defer);
 
-            // --- Before an outage / power should be back ---
-            if (on && !first && a.gpvId > 0) {
+            // --- Before an outage / power should be back (not during an emergency: no light anyway) ---
+            if (on && !first && a.gpvId > 0 && emNow == null) {
                 if (st.flag(Store.F_BEFORE)) {
                     int lead = st.lead();
                     for (int j = ni + 1; j < 96 && c[j] >= 0; j++) {
