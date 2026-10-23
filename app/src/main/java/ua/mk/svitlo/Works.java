@@ -92,7 +92,40 @@ final class Works {
         } catch (Exception ignored) {
         }
         Collections.sort(r, (x, y) -> Long.compare(x.start, y.start));
+        merge(r);
         return r;
+    }
+
+    /**
+     * The same emergency is sometimes registered twice: announced ahead (09:00–18:00), then
+     * recorded again when it really happened (10:24–16:23, closed with the real end). The record
+     * updated last says how it is now: an older one is cut to its end and counts as closed with it.
+     */
+    private static void merge(List<Work> r) {
+        int n = r.size();
+        long[] end = new long[n], upd = new long[n];
+        for (int i = 0; i < n; i++) {
+            end[i] = r.get(i).end;
+            upd[i] = r.get(i).updated;
+        }
+        for (int i = 0; i < n; i++) {
+            Work w = r.get(i);
+            for (int j = 0; j < n; j++) {
+                Work x = r.get(j);
+                if (i == j || upd[j] <= upd[i] || !sameEvent(w, end[i], x, end[j])) continue;
+                if (end[j] < w.end) {
+                    w.end = end[j];
+                    w.updated = Math.max(w.updated, upd[j]);
+                }
+            }
+        }
+    }
+
+    /** Two emergency records about the same outage: overlapping times, the same reason. */
+    static boolean sameEvent(Work a, long aEnd, Work b, long bEnd) {
+        if (!a.emergency() || !b.emergency() || a.start >= bEnd || b.start >= aEnd) return false;
+        String x = a.reason.toLowerCase(), y = b.reason.toLowerCase();
+        return x.isEmpty() || y.isEmpty() || x.equals(y);
     }
 
     /** The emergency (or planned work) happening now; the one lasting longest if several. */

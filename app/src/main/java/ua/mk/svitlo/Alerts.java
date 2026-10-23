@@ -57,7 +57,13 @@ final class Alerts {
             List<Works.Work> works = sch.works(a.domId);
             Works.Work emNow = Works.now(works, Works.EMERGENCY, nowSec);
             Set<String> emKeys = new HashSet<>();
-            for (Works.Work w : works) if (w.emergency() && w.showing(nowSec)) emKeys.add("ew:" + a.domId + ":" + w.id);
+            for (Works.Work w : works) {
+                if (!w.emergency() || !w.showing(nowSec)) continue;
+                // its notification stays, also one sent for another record of the same outage
+                for (Works.Work y : works) {
+                    if (y == w || Works.sameEvent(w, w.end, y, y.end)) emKeys.add("ew:" + a.domId + ":" + y.id);
+                }
+            }
             for (String k : keysOf(live)) {
                 long until = live.optLong(k);
                 boolean stale = until > 0 && nowSec >= until;
@@ -93,6 +99,21 @@ final class Alerts {
                 String id = String.valueOf(w.id);
                 long known = ew.optLong(id, -1);
                 String key = "ew:" + a.domId + ":" + id;
+                List<String> twins = new ArrayList<>();
+                if (known < 0) {
+                    // a second record of an outage we already told about: not a new one
+                    for (Works.Work y : works) {
+                        if (y == w || !ew.has(String.valueOf(y.id)) || !Works.sameEvent(w, w.end, y, y.end)) continue;
+                        known = Math.max(known, ew.optLong(String.valueOf(y.id)));
+                        twins.add("ew:" + a.domId + ":" + y.id);
+                    }
+                }
+                if (tellEm && known >= 0 && w.end > known + 60) {
+                    for (String t : twins) {   // one notification per outage: the new one replaces it
+                        Notifier.cancel(ctx, t);
+                        live.remove(t);
+                    }
+                }
                 String why = w.reason.isEmpty() ? "" : w.reason + ".\n";
                 if (tellEm && known < 0) {
                     show(ctx, live, 0, Notifier.CH_OUTAGE, key, a.name + ": аварійне відключення",
