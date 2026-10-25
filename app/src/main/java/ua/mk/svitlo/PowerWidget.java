@@ -111,6 +111,14 @@ public class PowerWidget extends AppWidgetProvider {
         return (color & 0x00FFFFFF) | (alpha << 24);
     }
 
+    /** On older MIUI, let TextView wrap in the actual host rather than relying on
+     * the launcher's height estimate to cap primary text size or force one line. */
+    private static boolean legacyMiui() {
+        return Build.VERSION.SDK_INT < 29 && ("Xiaomi".equalsIgnoreCase(Build.MANUFACTURER)
+                || "Redmi".equalsIgnoreCase(Build.MANUFACTURER)
+                || "Redmi".equalsIgnoreCase(Build.BRAND));
+    }
+
     static RemoteViews build(Context ctx, Store st, Schedule sch, ZonedDateTime now, int id, boolean small) {
         RemoteViews v = new RemoteViews(ctx.getPackageName(), small ? R.layout.widget_small : R.layout.widget_power);
 
@@ -192,6 +200,10 @@ public class PowerWidget extends AppWidgetProvider {
             size(v, R.id.w_status, Fit.size(ctx, s.title, 26 * k, 18 * k, inner, true, 2));
             v.setTextViewText(R.id.w_detail, s.shortDetail);
             size(v, R.id.w_detail, Fit.size(ctx, s.shortDetail, 19 * k, 14 * k, inner, true, 2));
+            if (legacyMiui()) {
+                v.setInt(R.id.w_detail, "setMaxLines", 3);
+                size(v, R.id.w_detail, 19 * k);
+            }
             return v;
         }
 
@@ -211,6 +223,12 @@ public class PowerWidget extends AppWidgetProvider {
         float detailMax = 19 * k;
         if (!Fit.fits(ctx, detail, detailMax * 0.85f, inner, true, 1)) detail = s.line1;
         float detailSize = Fit.size(ctx, detail, detailMax, 14 * k, inner, true, 1);
+        int detailLines = 1;
+        if (legacyMiui()) {
+            detailSize = detailMax;
+            detailLines = 3;
+            v.setInt(R.id.w_detail, "setMaxLines", detailLines);
+        }
         v.setTextViewText(R.id.w_detail, detail);
         size(v, R.id.w_detail, detailSize);
 
@@ -218,7 +236,7 @@ public class PowerWidget extends AppWidgetProvider {
         // An emergency / planned works: the reason first (up to 2 lines). During an emergency
         // the schedule doesn't matter, so nothing else.
         float rowSize = 17 * k;
-        float used = 20 + 34 + 2 + Math.max(40, Fit.lineDp(statusSize)) + Fit.lineDp(detailSize) + 4 + 4;
+        float used = 20 + 34 + 2 + Math.max(40, Fit.lineDp(statusSize)) + detailLines * Fit.lineDp(detailSize) + 4 + 4;
         int rows = hDp == 0 ? 2 : (int) Math.max(0, Math.min(ROWS.length,
                 (hDp - used) / (Fit.lineDp(rowSize) + 1)));
         List<String> texts = new ArrayList<>();
@@ -260,10 +278,11 @@ public class PowerWidget extends AppWidgetProvider {
      * Widgets cannot scroll, so the status and next time always take priority. */
     private static void accessibleText(Context ctx, RemoteViews v, Status s, String place, float k,
                                        float inner, float nameW, int height, boolean small) {
+        boolean legacy = legacyMiui();
         float name = Fit.size(ctx, place, scaled(ctx, (small ? 16 : 18) * k), 13, nameW, true, 1);
         size(v, R.id.w_address, name);
         float header = Math.max(small ? 32 : 34, Fit.lineDp(name));
-        if (height > 0 && height < 100) {
+        if (!legacy && height > 0 && height < 100) {
             v.setViewVisibility(R.id.w_header, View.GONE);
             header = 0;
         }
@@ -275,12 +294,13 @@ public class PowerWidget extends AppWidgetProvider {
 
         String title = s.title;
         float desired = scaled(ctx, (small ? 26 : 31) * k);
-        int maxLines = available < 100 ? 1 : 2;
+        int maxLines = legacy ? 2 : (available < 100 ? 1 : 2);
         if (s.work != null && s.work.emergency() && !Fit.fits(ctx, title, desired, inner, true, maxLines)) {
             title = "Аварія";
         }
         int titleLines = Fit.fits(ctx, title, desired, inner, true, 1) ? 1 : maxLines;
         float titleMax = Math.min(desired, Math.max(12, (available * 0.55f / titleLines - 1) / 1.18f));
+        if (legacy) titleMax = desired;
         float titleSize = Fit.size(ctx, title, titleMax, Math.min(18, titleMax), inner, true, titleLines);
         v.setInt(R.id.w_status, "setMaxLines", titleLines);
         v.setTextViewText(R.id.w_status, title);
@@ -294,6 +314,11 @@ public class PowerWidget extends AppWidgetProvider {
         float detailMax = Math.min(detailWanted,
                 Math.max(12, ((available - usedTitle) / detailLines - 1) / 1.18f));
         float detailSize = Fit.size(ctx, detail, detailMax, Math.min(14, detailMax), inner, true, detailLines);
+        if (legacy) {
+            detail = small ? s.shortDetail : s.line1;
+            detailLines = 3;
+            detailSize = detailWanted;
+        }
         v.setInt(R.id.w_detail, "setMaxLines", detailLines);
         v.setTextViewText(R.id.w_detail, detail);
         size(v, R.id.w_detail, detailSize);
