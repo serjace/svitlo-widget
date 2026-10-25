@@ -234,6 +234,10 @@ final class Works {
 
     /** Combined display periods, retaining the source and unknown gaps between known events. */
     static List<int[]> periods(int[] base, List<Work> ws, LocalDate day, ZonedDateTime now, int from) {
+        return periods(base, ws, day, now, from, 6);
+    }
+
+    static List<int[]> periods(int[] base, List<Work> ws, LocalDate day, ZonedDateTime now, int from, int limit) {
         int[] codes = paint(base, ws, day, now);
         int[] kinds = new int[codes.length];
         for (Work w : ws) {
@@ -247,7 +251,7 @@ final class Works {
         }
         List<int[]> result = new ArrayList<>();
         int i = Math.max(0, from);
-        while (i < codes.length && result.size() < 6) {
+        while (i < codes.length && result.size() < limit) {
             int level = Timeline.level(codes[i]), end = i + 1;
             while (end < codes.length && Timeline.level(codes[end]) == level && kinds[end] == kinds[i]) end++;
             result.add(new int[]{i, end, level, kinds[i]});

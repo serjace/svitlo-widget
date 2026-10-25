@@ -27,6 +27,7 @@ final class Status {
     /** Very short, for the 2×2 widget: "до 14:00". */
     String shortDetail = "";
     int nowIdx;
+    private boolean allPeriods;
     /** An emergency or planned work from www.energy.mk.ua happening now (it decides the status), or null. */
     Works.Work work;
     /** Upcoming periods: {start, end (-1 = unknown), level, 0 / 1 emergency / 2 planned works},
@@ -146,6 +147,27 @@ final class Status {
             if (r.size() >= max) break;
         }
         return r;
+    }
+
+    /** App-only list: current state plus known future periods, clipped to today.
+     * Copies keep the widget's periods and sizing behaviour untouched. */
+    List<int[]> remaining() {
+        List<int[]> result = new ArrayList<>();
+        for (int[] period : next) {
+            if (period[0] >= 48 || (period[1] >= 0 && period[1] <= nowIdx)) continue;
+            boolean current = period[0] <= nowIdx;
+            if (!current && period[2] == UNKNOWN) continue;
+            int[] row = period.clone();
+            row[0] = Math.max(nowIdx, row[0]);
+            if (row[1] > 48) row[1] = 48;
+            if (current && row[2] == UNKNOWN) row[1] = -1;
+            result.add(row);
+        }
+        if (result.isEmpty() || result.get(0)[0] > nowIdx) {
+            int kind = work == null ? 0 : work.emergency() ? 1 : 2;
+            result.add(0, new int[]{nowIdx, -1, level, kind});
+        }
+        return result;
     }
 
     /** Time column of a period row: "зараз–12:00", "12:30–24:00". */
@@ -322,7 +344,16 @@ final class Status {
     }
 
     static Status compute(Schedule sch, Address a, ZonedDateTime now) {
+        return compute(sch, a, now, false);
+    }
+
+    static Status computeForApp(Schedule sch, Address a, ZonedDateTime now) {
+        return compute(sch, a, now, true);
+    }
+
+    private static Status compute(Schedule sch, Address a, ZonedDateTime now, boolean allPeriods) {
         Status s = new Status();
+        s.allPeriods = allPeriods;
         if (a == null) {
             s.title = "Додайте адресу";
             s.set("Щоб бачити графік світла", "", "Відкрийте застосунок і оберіть адресу", "немає адреси");
@@ -418,7 +449,7 @@ final class Status {
     /** Today's schedule periods from slot "from" on. */
     private void addPeriods(int[] c, int from) {
         int i = from;
-        while (i < c.length && next.size() < 12) {
+        while (i < c.length && (allPeriods || next.size() < 12)) {
             int lvl = Timeline.level(c[i]);
             int e = i;
             while (e < c.length && Timeline.level(c[e]) == lvl) e++;
@@ -433,8 +464,8 @@ final class Status {
         boolean relevant = false;
         for (Works.Work w : works) if (w.end > now.toEpochSecond() || w.overdue(now.toEpochSecond())) relevant = true;
         if (!relevant) { addPeriods(c, from); return; }
-        for (int[] period : Works.periods(c, works, today, now, from)) {
-            if (next.size() >= 12) break;
+        for (int[] period : Works.periods(c, works, today, now, from, allPeriods ? Integer.MAX_VALUE : 6)) {
+            if (!allPeriods && next.size() >= 12) break;
             next.add(period);
         }
     }

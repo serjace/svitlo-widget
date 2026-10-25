@@ -98,4 +98,55 @@ public class StatusTest {
         assertTrue(text.contains("Планові роботи"));
         assertFalse(text.contains("не заплановано"));
     }
+
+    @Test public void remainingStartsWithCurrentAndContainsNoPastOrTomorrow() {
+        int[] today = new int[48]; Arrays.fill(today, 28, 32, Schedule.OFF);
+        Status result = Status.computeForApp(schedule(today, new int[48]), address(),
+                day.atTime(13, 15).atZone(Schedule.ZONE));
+        assertEquals(3, result.remaining().size());
+        assertArrayEquals(new int[]{26, 28, Timeline.ON, 0}, result.remaining().get(0));
+        assertArrayEquals(new int[]{28, 32, Timeline.OFF, 0}, result.remaining().get(1));
+        assertArrayEquals(new int[]{32, 48, Timeline.ON, 0}, result.remaining().get(2));
+        assertEquals("зараз–14:00", Status.rowTime(result.remaining().get(0), result.nowIdx));
+    }
+
+    @Test public void noMoreChangesStillShowsCurrentStateUntilMidnight() {
+        Status result = Status.computeForApp(schedule(new int[48], null), address(),
+                day.atTime(22, 0).atZone(Schedule.ZONE));
+        assertEquals(1, result.remaining().size());
+        assertArrayEquals(new int[]{44, 48, Timeline.ON, 0}, result.remaining().get(0));
+    }
+
+    @Test public void unknownCurrentIsBriefAndFutureUnknownGapsAreOmitted() {
+        Schedule s = schedule(null, null);
+        s.works.put(1L, Collections.singletonList(work(day, 9, day, 17)));
+        Status result = Status.computeForApp(s, address(), day.atTime(8, 0).atZone(Schedule.ZONE));
+        assertEquals(2, result.remaining().size());
+        assertArrayEquals(new int[]{16, -1, Timeline.UNKNOWN, 0}, result.remaining().get(0));
+        assertArrayEquals(new int[]{18, 34, Timeline.MAYBE, 2}, result.remaining().get(1));
+    }
+
+    @Test public void remainingDoesNotMutateOvernightEmergencyUsedByWidgets() {
+        Schedule s = schedule(null, null);
+        Works.Work w = work(day, 23, day.plusDays(1), 2); w.type = Works.EMERGENCY;
+        s.works.put(1L, Collections.singletonList(w));
+        Status result = Status.compute(s, address(), day.atTime(23, 30).atZone(Schedule.ZONE));
+        int end = result.next.get(0)[1];
+        assertTrue(end > 48);
+        assertEquals(48, result.remaining().get(0)[1]);
+        assertEquals(end, result.next.get(0)[1]);
+        assertTrue(result.shortDetail.contains("02:00 (завтра)"));
+    }
+
+    @Test public void appShowsAllRemainingPeriodsWithoutChangingWidgetLimits() {
+        int[] today = new int[48];
+        for (int i = 0; i < 48; i++) today[i] = i % 2 == 0 ? Schedule.ENABLE : Schedule.OFF;
+        Schedule s = schedule(today, null);
+        ZonedDateTime now = day.atStartOfDay(Schedule.ZONE);
+        assertEquals(48, Status.computeForApp(s, address(), now).remaining().size());
+        assertEquals(12, Status.compute(s, address(), now).next.size());
+        s.works.put(1L, Collections.singletonList(work(day, 0, day.plusDays(1), 0)));
+        assertEquals(48, Status.computeForApp(s, address(), now).remaining().size());
+        assertEquals(6, Status.compute(s, address(), now).next.size());
+    }
 }

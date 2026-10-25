@@ -12,7 +12,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.HorizontalScrollView;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -27,7 +26,6 @@ import androidx.viewpager2.widget.ViewPager2;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.color.MaterialColors;
@@ -47,7 +45,6 @@ import java.util.List;
  * Only what matters, in big letters. Settings live in SettingsActivity.
  */
 public class MainActivity extends AppCompatActivity {
-    private static final int MAX_ROWS = 4;
 
     /** Opens the app on this address (used by widgets). */
     static final String EXTRA_DOM = "open_dom";
@@ -398,10 +395,8 @@ public class MainActivity extends AppCompatActivity {
     private class Page extends RecyclerView.ViewHolder {
         final View addrBox, cardNext, cardToday, cardTomorrow, mTomorrowMore;
         final MaterialButton btnAddFirst;
-        final TextView addrName, addrFull, hTitle, hLine1, hLine2, hLine3, mTodayLabel, mTomorrowLabel,
+        final TextView addrName, addrFull, mTodayLabel, mTomorrowLabel,
                 mTodayText, mTomorrowText, mUpdated, mQueues;
-        final MaterialCardView cardHero;
-        final ImageView hIcon;
         final LinearLayout mNext;
         final HourGridView mTodayGrid, mTomorrowGrid;
         final View content;
@@ -415,12 +410,6 @@ public class MainActivity extends AppCompatActivity {
             addrBox = v.findViewById(R.id.p_addr_box);
             addrName = v.findViewById(R.id.p_addr_name);
             addrFull = v.findViewById(R.id.p_addr_full);
-            cardHero = v.findViewById(R.id.card_hero);
-            hIcon = v.findViewById(R.id.h_icon);
-            hTitle = v.findViewById(R.id.h_title);
-            hLine1 = v.findViewById(R.id.h_line1);
-            hLine2 = v.findViewById(R.id.h_line2);
-            hLine3 = v.findViewById(R.id.h_line3);
             btnAddFirst = v.findViewById(R.id.btn_add_first);
             cardNext = v.findViewById(R.id.card_next);
             mNext = v.findViewById(R.id.m_next);
@@ -444,7 +433,7 @@ public class MainActivity extends AppCompatActivity {
             if (boundPos != pos) scroll.scrollTo(0, 0);
             boundPos = pos;
             if (sch == null) return;
-            Status s = Status.compute(sch, a, now);
+            Status s = Status.computeForApp(sch, a, now);
 
             // Which address
             if (a != null) {
@@ -459,21 +448,6 @@ public class MainActivity extends AppCompatActivity {
                 addrFull.setVisibility(View.GONE);
             }
 
-            // Big status card in the status colour
-            int on = getColor(Timeline.contentColor(s.level));
-            cardHero.setCardBackgroundColor(getColor(Timeline.containerColor(s.level)));
-            hIcon.setImageResource(Timeline.iconRes(s.level));
-            hTitle.setText(s.title);
-            hTitle.setTextColor(on);
-            hLine1.setText(s.line1);
-            hLine1.setTextColor(on);
-            hLine1.setVisibility(s.line1.isEmpty() ? View.GONE : View.VISIBLE);
-            hLine2.setText(s.line2);
-            hLine2.setTextColor(on);
-            hLine2.setVisibility(s.line2.isEmpty() ? View.GONE : View.VISIBLE);
-            hLine3.setText(s.line3);
-            hLine3.setTextColor(on);
-            hLine3.setVisibility(s.line3.isEmpty() ? View.GONE : View.VISIBLE);
             if (a == null) {
                 btnAddFirst.setText("Додати адресу");
                 btnAddFirst.setOnClickListener(x ->
@@ -489,25 +463,37 @@ public class MainActivity extends AppCompatActivity {
             }
 
             boolean show = a != null && sch.hasData;
-            cardNext.setVisibility(View.GONE);
+            cardNext.setVisibility(a == null ? View.GONE : View.VISIBLE);
+            mNext.removeAllViews();
+            if (a != null) {
+                LayoutInflater inf = getLayoutInflater();
+                for (int[] period : s.remaining()) {
+                    boolean current = period[0] == s.nowIdx;
+                    View row = inf.inflate(R.layout.item_period, mNext, false);
+                    row.findViewById(R.id.p_pill).setBackgroundResource(Timeline.pillRes(period[2]));
+                    TextView time = row.findViewById(R.id.p_time);
+                    TextView label = row.findViewById(R.id.p_label);
+                    time.setText(Status.rowTime(period, s.nowIdx).replace("–", " – "));
+                    label.setText(current ? s.level == Status.UNKNOWN ? "Немає даних" : s.title
+                            : Status.rowLabel(period));
+                    if (current) {
+                        int pad = Math.round(12 * getResources().getDisplayMetrics().density);
+                        row.setBackgroundResource(R.drawable.row_now_bg);
+                        row.setPadding(pad, pad, pad, pad);
+                        time.setTextSize(19);
+                        label.setTextSize(23);
+                        label.setTypeface(label.getTypeface(), android.graphics.Typeface.BOLD);
+                        label.setTextColor(MaterialColors.getColor(label, com.google.android.material.R.attr.colorOnSurface));
+                    }
+                    mNext.addView(row);
+                }
+            }
             cardToday.setVisibility(show ? View.VISIBLE : View.GONE);
             cardTomorrow.setVisibility(show ? View.VISIBLE : View.GONE);
             if (show) {
                 LocalDate today = now.toLocalDate();
                 LocalDate tomorrow = today.plusDays(1);
                 DateTimeFormatter f = DateTimeFormatter.ofPattern("dd.MM");
-
-                mNext.removeAllViews();
-                LayoutInflater inf = getLayoutInflater();
-                List<int[]> up = s.upcoming(MAX_ROWS);
-                for (int[] r : up) {
-                    View row = inf.inflate(R.layout.item_period, mNext, false);
-                    row.findViewById(R.id.p_pill).setBackgroundResource(Timeline.pillRes(r[2]));
-                    ((TextView) row.findViewById(R.id.p_time)).setText(Status.rowTime(r, s.nowIdx).replace("–", " – "));
-                    ((TextView) row.findViewById(R.id.p_label)).setText(Status.rowLabel(r));
-                    mNext.addView(row);
-                }
-                cardNext.setVisibility(up.isEmpty() ? View.GONE : View.VISIBLE);
 
                 List<Works.Work> works = Works.events(sch.works(a.domId));
                 mTodayText.setText(Status.cardSummary(sch, a, today, now));
