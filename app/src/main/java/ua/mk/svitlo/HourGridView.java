@@ -20,6 +20,7 @@ public class HourGridView extends View {
     private int currentHour = -1;
     private final float dp;
     private final float baseTextSize;
+    private int columns = 12;
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -55,15 +56,28 @@ public class HourGridView extends View {
 
     /** Big phone font settings: keep "23" inside its box. */
     private void fitText(int width) {
-        float cw = (width - 8 * dp - 11 * gap()) / 12f;
-        text.setTextSize(cw > 0 ? Math.min(baseTextSize, cw * 0.62f) : baseTextSize);
+        boolean enlarged = getResources().getConfiguration().fontScale > 1.05f
+                || getResources().getConfiguration().screenWidthDp < 360;
+        columns = 12;
+        text.setTextSize(baseTextSize);
+        if (enlarged) {
+            float needed = text.measureText("23") + 12 * dp;
+            for (int n : new int[]{12, 8, 6, 4, 3, 2, 1}) {
+                columns = n;
+                if ((width - 8 * dp - (n - 1) * gap()) / n >= needed) break;
+            }
+        } else {
+            float cw = (width - 8 * dp - 11 * gap()) / 12f;
+            text.setTextSize(cw > 0 ? Math.min(baseTextSize, cw * 0.62f) : baseTextSize);
+        }
     }
 
     @Override
     protected void onMeasure(int widthSpec, int heightSpec) {
         int w = MeasureSpec.getSize(widthSpec);
         fitText(w);
-        int h = (int) (2 * cellH() + gap() + 8 * dp);
+        int rows = 24 / columns;
+        int h = (int) (rows * cellH() + (rows - 1) * gap() + 8 * dp);
         setMeasuredDimension(w, h);
     }
 
@@ -74,12 +88,12 @@ public class HourGridView extends View {
         float pad = 4 * dp;
         float gap = gap();
         float ch = cellH();
-        float cw = (getWidth() - 2 * pad - 11 * gap) / 12f;
+        float cw = (getWidth() - 2 * pad - (columns - 1) * gap) / columns;
         float rad = 8 * dp;
         fitText(getWidth());
         for (int hr = 0; hr < 24; hr++) {
-            float left = pad + (hr % 12) * (cw + gap);
-            float top = pad + (hr / 12) * (ch + gap);
+            float left = pad + (hr % columns) * (cw + gap);
+            float top = pad + (hr / columns) * (ch + gap);
             r.set(left, top, left + cw, top + ch);
             boolean past = currentHour >= 0 && hr < currentHour;
             int a = slots == null ? Timeline.UNKNOWN : Timeline.level(slots[hr * 2]);

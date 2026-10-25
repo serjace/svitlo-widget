@@ -147,11 +147,11 @@
                         android:id="@+id/btn_nf_from"
                         style="?attr/materialButtonOutlinedStyle"
                         android:layout_width="0dp"
-                        android:layout_height="56dp"
+                        android:layout_height="wrap_content" android:minHeight="56dp"
                         android:layout_weight="1"
                         android:insetTop="0dp"
                         android:insetBottom="0dp"
-                        android:maxLines="1"
+                        android:maxLines="3"
                         android:text="з 08:00"
                         android:textSize="17sp"
                         app:icon="@drawable/ic_schedule" />
@@ -164,18 +164,18 @@
                         android:id="@+id/btn_nf_to"
                         style="?attr/materialButtonOutlinedStyle"
                         android:layout_width="0dp"
-                        android:layout_height="56dp"
+                        android:layout_height="wrap_content" android:minHeight="56dp"
                         android:layout_weight="1"
                         android:insetTop="0dp"
                         android:insetBottom="0dp"
-                        android:maxLines="1"
+                        android:maxLines="3"
                         android:text="до 18:00"
                         android:textSize="17sp"
                         app:icon="@drawable/ic_schedule" />
                 </LinearLayout>
 
                 <!-- Пн … Нд: filled = notifications on that day (buttons made in code) -->
-                <LinearLayout
+                <ua.mk.svitlo.DayButtons
                     android:id="@+id/nf_days"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

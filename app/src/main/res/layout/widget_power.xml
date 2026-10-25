@@ -18,7 +18,8 @@
     <LinearLayout
         android:id="@+id/w_header"
         android:layout_width="match_parent"
-        android:layout_height="34dp"
+        android:layout_height="wrap_content"
+        android:minHeight="34dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
@@ -54,6 +55,7 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/w_status_row"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"

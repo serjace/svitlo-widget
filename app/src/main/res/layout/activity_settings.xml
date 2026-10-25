@@ -150,7 +150,7 @@
                         android:text="Попередити перед відключенням"
                         android:textSize="18sp" />
 
-                    <com.google.android.material.button.MaterialButtonToggleGroup
+                    <ua.mk.svitlo.AdaptiveToggleGroup
                         android:id="@+id/tg_lead"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -199,7 +199,7 @@
                             android:paddingEnd="4dp"
                             android:text="30 хв"
                             android:textSize="16sp" />
-                    </com.google.android.material.button.MaterialButtonToggleGroup>
+                    </ua.mk.svitlo.AdaptiveToggleGroup>
 
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/sw_return"
@@ -233,7 +233,7 @@
                         android:textColor="?attr/colorOnSurface"
                         android:textSize="18sp" />
 
-                    <com.google.android.material.button.MaterialButtonToggleGroup
+                    <ua.mk.svitlo.AdaptiveToggleGroup
                         android:id="@+id/tg_interval"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -268,7 +268,7 @@
                             android:paddingEnd="4dp"
                             android:text="кожні 5 хв"
                             android:textSize="16sp" />
-                    </com.google.android.material.button.MaterialButtonToggleGroup>
+                    </ua.mk.svitlo.AdaptiveToggleGroup>
 
                     <TextView
                         android:layout_width="match_parent"

@@ -16,7 +16,8 @@
     <LinearLayout
         android:id="@+id/w_header"
         android:layout_width="match_parent"
-        android:layout_height="32dp"
+        android:layout_height="wrap_content"
+        android:minHeight="32dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 

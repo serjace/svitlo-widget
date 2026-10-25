@@ -247,7 +247,7 @@ public class AddAddressActivity extends AppCompatActivity {
         }));
 
         // Пн … Нд as seven equal buttons: filled = chosen
-        LinearLayout days = findViewById(R.id.nf_days);
+        DayButtons days = findViewById(R.id.nf_days);
         String[] names = {"Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"};
         float dp = getResources().getDisplayMetrics().density;
         int onBg = MaterialColors.getColor(days, com.google.android.material.R.attr.colorSecondaryContainer);
@@ -276,7 +276,7 @@ public class AddAddressActivity extends AppCompatActivity {
             c.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
             c.setMinHeight((int) (48 * dp));
             c.setContentDescription(names[i]);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+            android.widget.GridLayout.LayoutParams lp = new android.widget.GridLayout.LayoutParams();
             lp.setMargins((int) (2 * dp), 0, (int) (2 * dp), 0);
             c.setOnClickListener(v -> {
                 int d = nfDays ^ bit;

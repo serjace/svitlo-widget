@@ -174,6 +174,18 @@ public class PowerWidget extends AppWidgetProvider {
         int hDp = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0);
         float inner = wDp > 0 ? wDp - (small ? 24 : 28) : 0;
         float nameW = inner > 0 ? inner - (small ? 21 : 24) - (several ? (small ? 44 : 50) : 0) : 0;
+        v.setInt(R.id.w_status, "setMaxLines", small ? 2 : 1);
+        v.setInt(R.id.w_detail, "setMaxLines", small ? 2 : 1);
+        v.setViewVisibility(R.id.w_header, View.VISIBLE);
+        if (!small) {
+            v.setViewVisibility(R.id.w_icon, View.VISIBLE);
+            v.setInt(R.id.w_status_row, "setMinimumHeight", Math.round(40 * ctx.getResources().getDisplayMetrics().density));
+        }
+        if (ctx.getResources().getConfiguration().fontScale > 1.05f
+                || ctx.getResources().getConfiguration().screenWidthDp < 360) {
+            accessibleText(ctx, v, s, place, k, inner, nameW, hDp, small);
+            return v;
+        }
         size(v, R.id.w_address, Fit.size(ctx, place, (small ? 16 : 18) * k, 13, nameW, true, 1));
 
         if (small) {
@@ -236,5 +248,80 @@ public class PowerWidget extends AppWidgetProvider {
             }
         }
         return v;
+    }
+
+    /** Convert SP through Android (including Android 14's nonlinear scaling) to measured DP. */
+    private static float scaled(Context ctx, float sp) {
+        android.util.DisplayMetrics dm = ctx.getResources().getDisplayMetrics();
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, dm) / dm.density;
+    }
+
+    /** Large system fonts: use all the width, then spend remaining height on secondary rows.
+     * Widgets cannot scroll, so the status and next time always take priority. */
+    private static void accessibleText(Context ctx, RemoteViews v, Status s, String place, float k,
+                                       float inner, float nameW, int height, boolean small) {
+        float name = Fit.size(ctx, place, scaled(ctx, (small ? 16 : 18) * k), 13, nameW, true, 1);
+        size(v, R.id.w_address, name);
+        float header = Math.max(small ? 32 : 34, Fit.lineDp(name));
+        if (height > 0 && height < 100) {
+            v.setViewVisibility(R.id.w_header, View.GONE);
+            header = 0;
+        }
+        float available = Math.max(24, (height > 0 ? height : (small ? 150 : 180)) - 20 - header - 6);
+        if (!small) {
+            v.setViewVisibility(R.id.w_icon, View.GONE);
+            v.setInt(R.id.w_status_row, "setMinimumHeight", 0);
+        }
+
+        String title = s.title;
+        float desired = scaled(ctx, (small ? 26 : 31) * k);
+        int maxLines = available < 100 ? 1 : 2;
+        if (s.work != null && s.work.emergency() && !Fit.fits(ctx, title, desired, inner, true, maxLines)) {
+            title = "Аварія";
+        }
+        int titleLines = Fit.fits(ctx, title, desired, inner, true, 1) ? 1 : maxLines;
+        float titleMax = Math.min(desired, Math.max(12, (available * 0.55f / titleLines - 1) / 1.18f));
+        float titleSize = Fit.size(ctx, title, titleMax, Math.min(18, titleMax), inner, true, titleLines);
+        v.setInt(R.id.w_status, "setMaxLines", titleLines);
+        v.setTextViewText(R.id.w_status, title);
+        size(v, R.id.w_status, titleSize);
+
+        String detail = small ? s.shortDetail : s.line1;
+        float detailWanted = scaled(ctx, 19 * k);
+        if (!Fit.fits(ctx, detail, detailWanted, inner, true, maxLines)) detail = s.shortDetail;
+        int detailLines = Fit.fits(ctx, detail, detailWanted, inner, true, 1) ? 1 : maxLines;
+        float usedTitle = titleLines * Fit.lineDp(titleSize);
+        float detailMax = Math.min(detailWanted,
+                Math.max(12, ((available - usedTitle) / detailLines - 1) / 1.18f));
+        float detailSize = Fit.size(ctx, detail, detailMax, Math.min(14, detailMax), inner, true, detailLines);
+        v.setInt(R.id.w_detail, "setMaxLines", detailLines);
+        v.setTextViewText(R.id.w_detail, detail);
+        size(v, R.id.w_detail, detailSize);
+        v.setContentDescription(R.id.w_root, place + ". " + s.title + ". " + s.line1 + ". " + s.line2);
+        if (small) return;
+
+        float left = available - usedTitle - detailLines * Fit.lineDp(detailSize) - 4;
+        float rowSize = scaled(ctx, 17 * k);
+        List<String> rows = new ArrayList<>();
+        if (s.work != null && !s.work.reason.isEmpty()) rows.add(s.work.reason);
+        if (s.work == null || !s.work.emergency()) {
+            for (int[] r : s.after(ROWS.length)) {
+                rows.add(Status.rowTime(r, s.nowIdx) + "  " + Status.rowLabel(r).toLowerCase());
+            }
+        }
+        for (int i = 0; i < ROWS.length; i++) {
+            String row = i < rows.size() ? rows.get(i) : null;
+            int lines = row != null && Fit.fits(ctx, row, rowSize, inner, false, 1) ? 1 : 2;
+            boolean show = row != null && left >= lines * Fit.lineDp(rowSize)
+                    && Fit.fits(ctx, row, rowSize, inner, false, lines);
+            v.setViewVisibility(ROWS[i], show ? View.VISIBLE : View.GONE);
+            if (show) {
+                left -= lines * Fit.lineDp(rowSize);
+                v.setTextViewText(ROWS[i], row);
+                v.setInt(ROWS[i], "setMaxLines", lines);
+                v.setTextColor(ROWS[i], ctx.getColor(Timeline.contentColor(s.level)));
+                size(v, ROWS[i], rowSize);
+            }
+        }
     }
 }

@@ -56,6 +56,7 @@ public class DayActivity extends AppCompatActivity {
         pager.setAdapter(adapter);
         Bars.smoothPager(pager);
         TabLayout tabs = findViewById(R.id.day_tabs);
+        if (getResources().getConfiguration().fontScale > 1.05f) tabs.setTabMode(TabLayout.MODE_SCROLLABLE);
         new TabLayoutMediator(tabs, pager, (tab, pos) -> tab.setText(dayLabel(pos))).attach();
         pager.setCurrentItem(day, false);
     }
