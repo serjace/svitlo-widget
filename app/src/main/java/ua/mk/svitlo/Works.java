@@ -128,6 +128,35 @@ final class Works {
         return x.isEmpty() || y.isEmpty() || x.equals(y);
     }
 
+    static boolean sameWork(Work a, Work b) {
+        if (a.type != b.type) return false;
+        if (a.id == b.id) return true;
+        return a.start < b.end && b.start < a.end
+                && a.reason.trim().equalsIgnoreCase(b.reason.trim());
+    }
+
+    /** A provider may publish multiple records for one event. The latest update decides its end. */
+    static List<Work> events(List<Work> source) {
+        List<Work> result = new ArrayList<>();
+        for (Work w : source) {
+            Work copy = new Work();
+            copy.id = w.id; copy.type = w.type; copy.start = w.start; copy.end = w.end;
+            copy.updated = w.updated; copy.reason = w.reason;
+            for (int i = result.size() - 1; i >= 0; i--) {
+                Work old = result.get(i);
+                if (!sameWork(old, copy)) continue;
+                if (old.updated > copy.updated || (old.updated == copy.updated && old.end > copy.end)) {
+                    copy.end = old.end; copy.updated = old.updated; copy.id = old.id;
+                }
+                copy.start = Math.min(copy.start, old.start);
+                result.remove(i);
+            }
+            result.add(copy);
+        }
+        Collections.sort(result, (a, b) -> Long.compare(a.start, b.start));
+        return result;
+    }
+
     /** The emergency (or planned work) happening now; the one lasting longest if several. */
     static Work now(List<Work> ws, int type, long now) {
         Work best = null;
@@ -177,10 +206,17 @@ final class Works {
         return (int) -Math.floorDiv(-localSeconds(sec, today), 1800L);
     }
 
-    /**
-     * One day's schedule with these works painted on: an emergency = no light,
-     * planned works = possible outage (where the schedule doesn't already say worse).
-     */
+    /** Known works without a published queue schedule; all other hours stay unknown.
+     * Null means there is no known work overlapping this day. */
+    static int[] knownDay(List<Work> ws, LocalDate day, ZonedDateTime now) {
+        int[] unknown = new int[48];
+        java.util.Arrays.fill(unknown, -1);
+        int[] result = paint(unknown, ws, day, now);
+        for (int code : result) if (code >= 0) return result;
+        return null;
+    }
+
+    /** One day's schedule with emergencies and planned works overlaid. */
     static int[] paint(int[] slots, List<Work> ws, LocalDate day, ZonedDateTime now) {
         int[] r = slots.clone();
         long nowSec = now.toEpochSecond();
@@ -194,5 +230,29 @@ final class Works {
             }
         }
         return r;
+    }
+
+    /** Combined display periods, retaining the source and unknown gaps between known events. */
+    static List<int[]> periods(int[] base, List<Work> ws, LocalDate day, ZonedDateTime now, int from) {
+        int[] codes = paint(base, ws, day, now);
+        int[] kinds = new int[codes.length];
+        for (Work w : ws) {
+            long end = w.overdue(now.toEpochSecond()) ? now.toEpochSecond() + 1 : w.end;
+            int start = Math.max(0, slot(w.start, day));
+            int stop = Math.min(codes.length, slotUp(end, day));
+            for (int i = start; i < stop; i++) {
+                if (w.emergency()) kinds[i] = 1;
+                else if (kinds[i] == 0 && base[i] < Schedule.OFF) kinds[i] = 2;
+            }
+        }
+        List<int[]> result = new ArrayList<>();
+        int i = Math.max(0, from);
+        while (i < codes.length && result.size() < 6) {
+            int level = Timeline.level(codes[i]), end = i + 1;
+            while (end < codes.length && Timeline.level(codes[end]) == level && kinds[end] == kinds[i]) end++;
+            result.add(new int[]{i, end, level, kinds[i]});
+            i = end;
+        }
+        return result;
     }
 }

@@ -129,6 +129,9 @@ public class DayActivity extends AppCompatActivity {
 
             int[] slots = a.gpvId > 0 ? sch.slots(date, a.gpvId) : null;
             if (slots == null && day == 0 && a.gpvId > 0 && sch.hasData) slots = new int[48];
+            boolean partial = slots == null;
+            if (partial) slots = Works.knownDay(sch.works(a.domId), date, now);
+            WorkRows.fill(itemView.findViewById(R.id.d_works), Works.events(sch.works(a.domId)), date, now);
             list.removeAllViews();
             if (slots == null) {
                 summary.setText(a.gpvId == 0 ? "Черга невідома"
@@ -138,8 +141,8 @@ public class DayActivity extends AppCompatActivity {
                 card.setVisibility(View.GONE);
                 return;
             }
-            slots = Works.paint(slots, sch.works(a.domId), date, now);   // emergencies / planned works too
-            summary.setText(Status.daySummary(slots));
+            if (!partial) slots = Works.paint(slots, sch.works(a.domId), date, now);
+            summary.setText(partial ? Status.partialDaySummary(slots, a.gpvId > 0) : Status.daySummary(slots));
             grid.setVisibility(View.VISIBLE);
             grid.setData(slots, day == 0 ? now.getHour() : -1);
             card.setVisibility(View.VISIBLE);

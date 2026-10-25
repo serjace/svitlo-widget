@@ -222,6 +222,11 @@ final class Alerts {
             }
             ns.put("defer", defer);
 
+            boolean workEndNotice = workEnds(ctx, st, sch, a, ns, live, works, now, first, on && open);
+            if (workEndNotice && ni >= 1 && c[ni] >= 0 && c[ni] < Schedule.OFF && c[ni - 1] >= Schedule.OFF) {
+                st.markSent("ret:" + a.domId + ":" + Status.timeOf(today, ni).toEpochSecond());
+            }
+
             // --- Before an outage / power should be back (not during an emergency: no light anyway) ---
             if (on && !first && a.gpvId > 0 && emNow == null) {
                 if (st.flag(Store.F_BEFORE)) {
@@ -251,7 +256,8 @@ final class Alerts {
                         }
                     }
                 }
-                if (st.flag(Store.F_RETURN) && !gav && !sgav && ni >= 1
+                if (st.flag(Store.F_RETURN) && !workEndNotice && !gav && !sgav
+                        && Works.now(works, Works.PLANNED, nowSec) == null && ni >= 1
                         && c[ni] < Schedule.OFF && c[ni - 1] >= Schedule.OFF) {
                     ZonedDateTime end = Status.timeOf(today, ni);
                     if (Duration.between(end, now).toMinutes() < 20 && a.notifyAllowed(end)) {
@@ -284,6 +290,80 @@ final class Alerts {
             ns.put("live", live);
             st.saveNotifyState(a.domId, ns);
         }
+    }
+
+    /** Track only observed events; a disappearing record is never treated as confirmed power. */
+    private static boolean workEnds(Context ctx, Store st, Schedule sch, Address a, JSONObject ns,
+                                    JSONObject live, List<Works.Work> raw, ZonedDateTime now,
+                                    boolean first, boolean allowed) throws JSONException {
+        org.json.JSONArray old = ns.optJSONArray("workEnds");
+        org.json.JSONArray fresh = new org.json.JSONArray();
+        List<Works.Work> events = Works.events(raw);
+        List<Works.Work> ended = new ArrayList<>();
+        boolean anyEstimate = false;
+        long sec = now.toEpochSecond();
+        for (Works.Work w : events) {
+            if (w.start > sec) continue;
+            WorkEndState state = new WorkEndState();
+            boolean known = false;
+            if (old != null) for (int i = 0; i < old.length(); i++) {
+                JSONObject p = old.getJSONObject(i);
+                Works.Work prev = new Works.Work();
+                prev.id = p.optLong("id"); prev.type = p.optInt("type");
+                prev.start = p.optLong("start"); prev.end = p.optLong("end"); prev.reason = p.optString("reason");
+                if (!Works.sameWork(w, prev)) continue;
+                known = true;
+                state.estimatedEnd = Math.max(state.estimatedEnd, p.optLong("notifiedEnd"));
+                state.recordedEnd |= p.optBoolean("recorded");
+            }
+            int news = state.observe(w, sec);
+            // Baseline on installation/adding an address; no retrospective notification flood.
+            if (!first && known && allowed && st.flag(Store.F_RETURN) && news != 0) {
+                ended.add(w);
+                anyEstimate |= news == 1;
+            }
+            JSONObject p = new JSONObject();
+            p.put("id", w.id); p.put("type", w.type); p.put("start", w.start); p.put("end", w.end);
+            p.put("reason", w.reason); p.put("notifiedEnd", state.estimatedEnd); p.put("recorded", state.recordedEnd);
+            fresh.put(p);
+        }
+        ns.put("workEnds", fresh);
+        String key = "wret:" + a.domId;
+        // A revised future deadline invalidates the previous reminder immediately.
+        for (Works.Work w : events) {
+            if (w.start <= sec && w.end > sec && live.has(key)) {
+                Notifier.cancel(ctx, key);
+                live.remove(key);
+                break;
+            }
+        }
+        if (ended.isEmpty()) return false;
+        StringBuilder text = new StringBuilder();
+        for (Works.Work w : ended) {
+            if (text.length() > 0) text.append("\n");
+            text.append(w.emergency() ? "Аварійні роботи" : "Планові роботи")
+                    .append(": ").append(Works.hm(w.end));
+            if (!w.reason.isEmpty()) text.append(" · ").append(w.reason);
+        }
+        boolean otherWork = false;
+        for (Works.Work w : events) {
+            boolean thisEnded = false;
+            for (Works.Work e : ended) if (Works.sameWork(w, e)) thisEnded = true;
+            if (!thisEnded && w.showing(sec)) otherWork = true;
+        }
+        int[] queue = a.gpvId > 0 ? sch.slots(now.toLocalDate(), a.gpvId) : null;
+        boolean emergency = sch.isEnabled(a.gavId) || sch.isEnabled(a.sgavId);
+        if (emergency) text.append("\nАварійне відключення за чергою ще діє.");
+        else if (otherWork) text.append("\nЗа адресою ще тривають інші роботи або аварійне відключення.");
+        else if (queue == null) text.append("\nГрафік ГПВ невідомий.");
+        else if (queue[Status.nowIndex(now)] >= Schedule.OFF) text.append("\nЗа графіком ГПВ світла зараз немає.");
+        else if (queue[Status.nowIndex(now)] == Schedule.PROBABLY) text.append("\nЗа графіком ГПВ ще можливе відключення.");
+        else text.append("\nЗа графіком ГПВ зараз відключення немає.");
+        text.append("\nФактична наявність світла застосунку невідома.");
+        String title = anyEstimate ? ": очікуваний час завершення робіт настав"
+                : ": обленерго оновило час завершення робіт";
+        show(ctx, live, sec + 3600, Notifier.CH_OUTAGE, key, a.name + title, text.toString(), Status.color(Status.YELLOW));
+        return true;
     }
 
     /** "Дім: зміна черги на ГПВ 4.1" with the old queue and what it means for today and tomorrow. */

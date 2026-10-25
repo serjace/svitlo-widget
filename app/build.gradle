@@ -47,6 +47,7 @@ android {
 }
 
 dependencies {
+    testImplementation 'junit:junit:4.13.2'
     // Google's official Material 3 design components (dark mode, Material You colours)
     implementation 'com.google.android.material:material:1.12.0'
     // swiping between addresses on the main screen
@@ -55,4 +56,9 @@ dependencies {
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     // transparent gesture bar on Android 10+
     implementation 'androidx.activity:activity:1.8.2'
+}
+
+// GitHub's release command must pass the timeline/reminder regressions before publishing.
+tasks.matching { it.name == 'assembleRelease' }.configureEach {
+    dependsOn 'testDebugUnitTest'
 }

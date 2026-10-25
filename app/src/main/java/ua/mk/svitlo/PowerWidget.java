@@ -204,6 +204,8 @@ public class PowerWidget extends AppWidgetProvider {
                 v.setInt(R.id.w_detail, "setMaxLines", 3);
                 size(v, R.id.w_detail, 19 * k);
             }
+            smallNext(ctx, v, s, inner, hDp - 20 - 32 - 4
+                    - 2 * Fit.lineDp(26 * k) - (legacyMiui() ? 3 : 2) * Fit.lineDp(19 * k), 17 * k);
             return v;
         }
 
@@ -241,16 +243,16 @@ public class PowerWidget extends AppWidgetProvider {
                 (hDp - used) / (Fit.lineDp(rowSize) + 1)));
         List<String> texts = new ArrayList<>();
         boolean reason = s.work != null && !s.work.reason.isEmpty();
-        if (reason) texts.add(s.work.reason);
-        if (s.work == null || !s.work.emergency()) {
+        if (s.work == null || !s.work.overdue(now.toEpochSecond())) {
             for (int[] r : s.after(ROWS.length)) {
                 texts.add(Status.rowTime(r, s.nowIdx) + "  " + Status.rowLabel(r).toLowerCase());
             }
         }
+        if (reason) texts.add(s.work.reason);
         int room = rows;
         for (int n = 0; n < ROWS.length; n++) {
             String text = n < texts.size() ? texts.get(n) : null;
-            int lines = n == 0 && reason ? 2 : 1;
+            int lines = reason && n == texts.size() - 1 ? 2 : 1;
             float sz = text == null ? rowSize : Fit.size(ctx, text, rowSize, 12 * k, inner, false, lines);
             if (lines == 2 && (room == 1 || Fit.fits(ctx, text, sz, inner, false, 1))) lines = 1;
             if (text != null && room >= lines) {
@@ -323,17 +325,19 @@ public class PowerWidget extends AppWidgetProvider {
         v.setTextViewText(R.id.w_detail, detail);
         size(v, R.id.w_detail, detailSize);
         v.setContentDescription(R.id.w_root, place + ". " + s.title + ". " + s.line1 + ". " + s.line2);
-        if (small) return;
-
         float left = available - usedTitle - detailLines * Fit.lineDp(detailSize) - 4;
         float rowSize = scaled(ctx, 17 * k);
+        if (small) {
+            smallNext(ctx, v, s, inner, left, rowSize);
+            return;
+        }
         List<String> rows = new ArrayList<>();
-        if (s.work != null && !s.work.reason.isEmpty()) rows.add(s.work.reason);
-        if (s.work == null || !s.work.emergency()) {
+        if (s.work == null || s.next.size() > 1) {
             for (int[] r : s.after(ROWS.length)) {
                 rows.add(Status.rowTime(r, s.nowIdx) + "  " + Status.rowLabel(r).toLowerCase());
             }
         }
+        if (s.work != null && !s.work.reason.isEmpty()) rows.add(s.work.reason);
         for (int i = 0; i < ROWS.length; i++) {
             String row = i < rows.size() ? rows.get(i) : null;
             int lines = row != null && Fit.fits(ctx, row, rowSize, inner, false, 1) ? 1 : 2;
@@ -348,5 +352,21 @@ public class PowerWidget extends AppWidgetProvider {
                 size(v, ROWS[i], rowSize);
             }
         }
+    }
+
+    /** The square widget gains a next-period row when the user makes it tall enough. */
+    private static void smallNext(Context ctx, RemoteViews v, Status s, float width, float height, float size) {
+        List<int[]> next = s.after(1);
+        v.setViewVisibility(R.id.w_row1, View.GONE);
+        if (next.isEmpty()) return;
+        int[] p = next.get(0);
+        String text = Status.rowTime(p, s.nowIdx) + "  " + Status.rowLabel(p).toLowerCase();
+        int lines = Fit.fits(ctx, text, size, width, false, 1) ? 1 : 2;
+        if (height < lines * Fit.lineDp(size) || !Fit.fits(ctx, text, size, width, false, lines)) return;
+        v.setViewVisibility(R.id.w_row1, View.VISIBLE);
+        v.setInt(R.id.w_row1, "setMaxLines", lines);
+        v.setTextViewText(R.id.w_row1, text);
+        v.setTextColor(R.id.w_row1, ctx.getColor(Timeline.contentColor(s.level)));
+        size(v, R.id.w_row1, size);
     }
 }

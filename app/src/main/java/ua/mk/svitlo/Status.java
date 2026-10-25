@@ -182,6 +182,18 @@ final class Status {
         return b.toString();
     }
 
+    /** Display-only summary when works are known but the queue schedule is not published. */
+    static String partialDaySummary(int[] slots, boolean queueKnown) {
+        StringBuilder b = new StringBuilder(queueKnown
+                ? "Графік ГПВ ще не опубліковано" : "Черга ГПВ невідома");
+        List<int[]> off = runs(slots, Schedule.OFF, Schedule.SURE_OFF);
+        List<int[]> maybe = runs(slots, Schedule.PROBABLY, Schedule.PROBABLY);
+        if (!off.isEmpty()) b.append("\nСвітло відсутнє:\n").append(joinRanges(off));
+        if (!maybe.isEmpty()) b.append("\nМожливі відключення:\n").append(joinRanges(maybe));
+        if (!runs(slots, -1, -1).isEmpty()) b.append("\nІнші години — невідомо");
+        return b.toString();
+    }
+
     /**
      * Short summary of today from the current half-hour to midnight (for the "schedule changed"
      * notification): "Світла не буде: зараз–16:00, 20:00–22:00\nМожливі відключення: 18:00–20:00".
@@ -247,6 +259,7 @@ final class Status {
     static String change(int lvl, int prevLvl, int start) {
         String t = String.format(Locale.US, "%02d:%02d", (start % 48) / 2, (start % 2) * 30)
                 + (start >= 48 ? " (завтра)" : "");
+        if (lvl == UNKNOWN) return "З " + t + " графік невідомий";
         if (lvl == RED) return "Вимкнуть о " + t;
         if (lvl == YELLOW) return "Можливе відключення з " + t;
         return prevLvl == RED ? "Увімкнуть о " + t : "Світло буде з " + t;
@@ -255,6 +268,7 @@ final class Status {
     /** For the small square widget: "вимкнуть о 20:30", "можливе з 20:00". */
     static String shortChange(int lvl, int prevLvl, int start) {
         String t = hm(start % 48) + (start >= 48 ? " завтра" : "");
+        if (lvl == UNKNOWN) return "з " + t + " графік невідомий";
         if (lvl == RED) return "вимкнуть о " + t;
         if (lvl == YELLOW) return "можливе з " + t;
         return prevLvl == RED ? "увімкнуть о " + t : "світло з " + t;
@@ -292,6 +306,7 @@ final class Status {
         }
         LocalDate today = now.toLocalDate();
         int[] c = combined(sch, a, today);
+        if (a.gpvId == 0) java.util.Arrays.fill(c, -1);
         int ni = nowIndex(now);
         s.nowIdx = ni;
         int code = c[ni];
@@ -301,7 +316,7 @@ final class Status {
         // ends, so the hourly schedule alone decides. Only ГАВ/СГАВ emergency flags are used.
         int from = ni;   // where the regular list of periods starts
         long nowSec = now.toEpochSecond();
-        List<Works.Work> ws = sch.works(a.domId);
+        List<Works.Work> ws = Works.events(sch.works(a.domId));
 
         // An emergency registered for this house on www.energy.mk.ua: that's what is happening,
         // whatever the schedule says. Reason and the estimated time, no schedule texts.
@@ -315,15 +330,16 @@ final class Status {
             s.set(until, em.reason, until, late ? "час відновлення уточнюється" : "до " + Works.at(em.end, now));
             int end = late ? -1 : Works.slotUp(em.end, today);
             s.next.add(new int[]{ni, end, RED, 1});
-            if (end > ni) s.addPeriods(c, end);   // what the schedule says after it ("Найближчі години")
+            if (end > ni) s.addCombinedPeriods(c, ws, today, now, end);
             return s;
         }
 
-        if (!gav && !sgav && a.gpvId == 0) {
+        if (!gav && !sgav && a.gpvId == 0 && Works.now(ws, Works.PLANNED, nowSec) == null) {
             // Without a queue we know nothing — never pretend there is light.
             s.title = "Черга невідома";
             s.set("Сайт не вказав черги для цієї адреси", "Змініть адресу в налаштуваннях",
                     "Черга невідома — змініть адресу", "черга невідома");
+            s.addCombinedPeriods(c, ws, today, now, ni);
             return s;
         }
 
@@ -348,7 +364,7 @@ final class Status {
             s.title = "Світло є";
         }
 
-        s.addPeriods(c, from);
+        s.addCombinedPeriods(c, ws, today, now, from);
 
         // Planned works now (and the schedule doesn't say worse): their own status. The light
         // may go off for a while, not necessarily for the whole time.
@@ -379,6 +395,18 @@ final class Status {
             while (e < 96 && c[e] >= 0 && Timeline.level(c[e]) == lvl) e++;
             next.add(new int[]{i, e, lvl, 0});
             i = e;
+        }
+    }
+
+    /** Display timeline only; notification rules still use the queue's original schedule. */
+    private void addCombinedPeriods(int[] c, List<Works.Work> works, LocalDate today,
+                                    ZonedDateTime now, int from) {
+        boolean relevant = false;
+        for (Works.Work w : works) if (w.end > now.toEpochSecond() || w.overdue(now.toEpochSecond())) relevant = true;
+        if (!relevant) { addPeriods(c, from); return; }
+        for (int[] period : Works.periods(c, works, today, now, from)) {
+            if (next.size() >= 6) break;
+            next.add(period);
         }
     }
 }

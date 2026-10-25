@@ -389,13 +389,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private class Page extends RecyclerView.ViewHolder {
-        final View addrBox, cardNext, cardWorks, cardToday, cardTomorrow, mTomorrowMore;
+        final View addrBox, cardNext, cardToday, cardTomorrow, mTomorrowMore;
         final MaterialButton btnAddFirst;
         final TextView addrName, addrFull, hTitle, hLine1, hLine2, hLine3, mTodayLabel, mTomorrowLabel,
-                mTomorrowText, mUpdated, mQueues, mWorksTitle;
+                mTomorrowText, mUpdated, mQueues;
         final MaterialCardView cardHero;
         final ImageView hIcon;
-        final LinearLayout mNext, mWorks;
+        final LinearLayout mNext, todayWorks, tomorrowWorks;
         final HourGridView mTodayGrid, mTomorrowGrid;
         final View content;
         final NestedScrollView scroll;
@@ -417,9 +417,8 @@ public class MainActivity extends AppCompatActivity {
             btnAddFirst = v.findViewById(R.id.btn_add_first);
             cardNext = v.findViewById(R.id.card_next);
             mNext = v.findViewById(R.id.m_next);
-            cardWorks = v.findViewById(R.id.card_works);
-            mWorksTitle = v.findViewById(R.id.m_works_title);
-            mWorks = v.findViewById(R.id.m_works);
+            todayWorks = v.findViewById(R.id.m_today_works);
+            tomorrowWorks = v.findViewById(R.id.m_tomorrow_works);
             cardToday = v.findViewById(R.id.card_today);
             mTodayLabel = v.findViewById(R.id.m_today_label);
             mTodayGrid = v.findViewById(R.id.m_today_grid);
@@ -485,7 +484,6 @@ public class MainActivity extends AppCompatActivity {
 
             boolean show = a != null && sch.hasData;
             cardNext.setVisibility(View.GONE);
-            cardWorks.setVisibility(View.GONE);
             cardToday.setVisibility(show ? View.VISIBLE : View.GONE);
             cardTomorrow.setVisibility(show ? View.VISIBLE : View.GONE);
             if (show) {
@@ -505,43 +503,32 @@ public class MainActivity extends AppCompatActivity {
                 }
                 cardNext.setVisibility(up.isEmpty() ? View.GONE : View.VISIBLE);
 
-                // Planned works (and emergency repairs announced ahead) later today or tomorrow
-                List<Works.Work> works = sch.works(a.domId);
-                List<Works.Work> coming = Works.coming(works, now);
-                mWorks.removeAllViews();
-                boolean anyEmergency = false;
-                for (Works.Work w : coming) {
-                    View row = inf.inflate(R.layout.item_period, mWorks, false);
-                    row.findViewById(R.id.p_pill).setBackgroundResource(
-                            Timeline.pillRes(w.emergency() ? Timeline.OFF : Timeline.MAYBE));
-                    ((TextView) row.findViewById(R.id.p_time)).setText(Works.hm(w.start) + " – " + Works.hm(w.end));
-                    boolean isToday = Instant.ofEpochSecond(w.start).atZone(Schedule.ZONE).toLocalDate().equals(today);
-                    String what = w.emergency() ? "аварійні роботи" : "можливе відключення";
-                    if (!w.reason.isEmpty()) what += ": " + Status.lower(w.reason);
-                    ((TextView) row.findViewById(R.id.p_label)).setText((isToday ? "Сьогодні" : "Завтра") + " · " + what);
-                    mWorks.addView(row);
-                    anyEmergency |= w.emergency();
-                }
-                mWorksTitle.setText(anyEmergency ? "Заплановані роботи" : "Планові роботи");
-                cardWorks.setVisibility(coming.isEmpty() ? View.GONE : View.VISIBLE);
+                List<Works.Work> works = Works.events(sch.works(a.domId));
+                WorkRows.fill(todayWorks, works, today, now);
+                WorkRows.fill(tomorrowWorks, works, tomorrow, now);
 
                 // the hour grids show these works too: emergency = no light, planned = possible
                 int[] t = a.gpvId > 0 ? sch.slots(today, a.gpvId) : null;
-                if (t == null) t = new int[48];
+                if (t == null) {
+                    t = new int[48];
+                    if (a.gpvId == 0) java.util.Arrays.fill(t, -1);
+                }
                 t = Works.paint(t, works, today, now);
                 mTodayLabel.setText("Сьогодні, " + today.format(f));
                 mTodayGrid.setData(t, now.getHour());
 
                 mTomorrowLabel.setText("Завтра, " + tomorrow.format(f));
                 int[] m = null;
-                if (sch.hasDay(tomorrow)) m = a.gpvId > 0 ? sch.slots(tomorrow, a.gpvId) : new int[48];
+                if (a.gpvId > 0) m = sch.slots(tomorrow, a.gpvId);
+                boolean partial = m == null;
                 if (m != null) m = Works.paint(m, works, tomorrow, now);
+                else m = Works.knownDay(works, tomorrow, now);
                 if (m != null) {
-                    mTomorrowText.setText(Status.daySummary(m));
+                    mTomorrowText.setText(partial ? Status.partialDaySummary(m, a.gpvId > 0) : Status.daySummary(m));
                     mTomorrowGrid.setVisibility(View.VISIBLE);
                     mTomorrowGrid.setData(m, -1);
                 } else {
-                    mTomorrowText.setText("Графік ще не опубліковано");
+                    mTomorrowText.setText(a.gpvId > 0 ? "Графік ще не опубліковано" : "Черга ГПВ невідома");
                     mTomorrowGrid.setVisibility(View.GONE);
                 }
                 mTomorrowMore.setVisibility(m != null ? View.VISIBLE : View.GONE);

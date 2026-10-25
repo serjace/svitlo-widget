@@ -76,4 +76,13 @@
         android:maxLines="2"
         android:text="до 14:00"
         android:textColor="#FFFFFFFF" />
+    <TextView
+        android:id="@+id/w_row1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:textSize="17sp"
+        android:visibility="gone" />
 </LinearLayout>
