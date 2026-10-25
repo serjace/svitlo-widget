@@ -159,16 +159,22 @@ final class Works {
         return Instant.ofEpochSecond(sec).atZone(Schedule.ZONE).format(DateTimeFormatter.ofPattern("HH:mm"));
     }
 
-    /** Slot index (half-hours from today 00:00) of a moment, rounded down; may be < 0 or > 96. */
+    /** Local-clock seconds from today's date, matching the schedule's 48 slots per day.
+     * Elapsed seconds since midnight would shift slots on daylight-saving change days. */
+    private static long localSeconds(long sec, LocalDate today) {
+        ZonedDateTime local = Instant.ofEpochSecond(sec).atZone(Schedule.ZONE);
+        return (local.toLocalDate().toEpochDay() - today.toEpochDay()) * 86400L
+                + local.toLocalTime().toSecondOfDay();
+    }
+
+    /** Local half-hour slot of a moment, rounded down; may be < 0 or > 96. */
     static int slot(long sec, LocalDate today) {
-        long from = today.atStartOfDay(Schedule.ZONE).toEpochSecond();
-        return (int) Math.floorDiv(sec - from, 1800L);
+        return (int) Math.floorDiv(localSeconds(sec, today), 1800L);
     }
 
     /** Same, rounded up (the first half-hour that is free again). */
     static int slotUp(long sec, LocalDate today) {
-        long from = today.atStartOfDay(Schedule.ZONE).toEpochSecond();
-        return (int) -Math.floorDiv(from - sec, 1800L);
+        return (int) -Math.floorDiv(-localSeconds(sec, today), 1800L);
     }
 
     /**
