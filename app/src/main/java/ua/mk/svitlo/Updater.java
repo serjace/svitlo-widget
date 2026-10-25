@@ -66,6 +66,10 @@ final class Updater {
             scheduleNext(app, st, sch, now);
             ensurePeriodic(app);
         }
+        notifyListener();
+    }
+
+    static void notifyListener() {
         Runnable l = listener;
         if (l != null) new Handler(Looper.getMainLooper()).post(l);
     }

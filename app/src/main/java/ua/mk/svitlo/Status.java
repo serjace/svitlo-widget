@@ -84,7 +84,7 @@ final class Status {
         int[] m = null;
         if (sch.hasDay(tomorrow)) m = a.gpvId > 0 ? sch.slots(tomorrow, a.gpvId) : new int[48];
         for (int i = 0; i < 48; i++) {
-            r[i] = t != null ? t[i] : Schedule.ENABLE;
+            r[i] = t != null ? t[i] : -1;
             r[48 + i] = m != null ? m[i] : -1;
         }
         return r;
@@ -141,7 +141,7 @@ final class Status {
     List<int[]> upcoming(int max) {
         List<int[]> r = new ArrayList<>();
         for (int[] p : next) {
-            if (p[0] == nowIdx) continue;
+            if (p[0] == nowIdx || p[2] == UNKNOWN) continue;
             r.add(p);
             if (r.size() >= max) break;
         }
@@ -190,8 +190,32 @@ final class Status {
         List<int[]> maybe = runs(slots, Schedule.PROBABLY, Schedule.PROBABLY);
         if (!off.isEmpty()) b.append("\nСвітло відсутнє:\n").append(joinRanges(off));
         if (!maybe.isEmpty()) b.append("\nМожливі відключення:\n").append(joinRanges(maybe));
-        if (!runs(slots, -1, -1).isEmpty()) b.append("\nІнші години — невідомо");
         return b.toString();
+    }
+
+    static String cardSummary(Schedule sch, Address a, LocalDate day, ZonedDateTime now) {
+        List<String> parts = new ArrayList<>();
+        int[] queue = a.gpvId > 0 ? sch.slots(day, a.gpvId) : null;
+        if (ScheduleNews.hasOutages(queue, 0)) parts.add("Відключення за ГПВ · черга " + a.gpvName);
+        boolean emergency = false, planned = false;
+        long start = day.atStartOfDay(Schedule.ZONE).toEpochSecond();
+        long end = day.plusDays(1).atStartOfDay(Schedule.ZONE).toEpochSecond();
+        for (Works.Work w : sch.works(a.domId)) {
+            long finish = w.overdue(now.toEpochSecond()) ? now.toEpochSecond() + 1 : w.end;
+            if (w.start < end && finish > start) {
+                emergency |= w.emergency();
+                planned |= !w.emergency();
+            }
+        }
+        if (day.equals(now.toLocalDate())) {
+            if (a.gavId > 0 && sch.isEnabled(a.gavId)) parts.add("Діє ГАВ · черга " + a.gavName);
+            if (a.sgavId > 0 && sch.isEnabled(a.sgavId)) parts.add("Діє СГАВ · черга " + a.sgavName);
+        }
+        if (emergency) parts.add("Аварійні відключення");
+        if (planned) parts.add("Планові роботи");
+        if (parts.isEmpty() && queue != null) parts.add("Відключень не заплановано");
+        if (queue == null) parts.add(a.gpvId > 0 ? "ГПВ ще не опубліковано" : "Черга ГПВ невідома");
+        return String.join("\n", parts);
     }
 
     /**
@@ -199,6 +223,9 @@ final class Status {
      * notification): "Світла не буде: зараз–16:00, 20:00–22:00\nМожливі відключення: 18:00–20:00".
      */
     static String restOfDay(int[] slots, int from) {
+        boolean known = false;
+        for (int i = Math.max(0, from); i < slots.length; i++) known |= slots[i] >= 0;
+        if (!known) return "ГПВ ще не опубліковано";
         int[] rest = slots.clone();
         for (int i = 0; i < from && i < rest.length; i++) rest[i] = Schedule.ENABLE;
         List<int[]> off = runs(rest, Schedule.OFF, Schedule.SURE_OFF);
@@ -230,7 +257,7 @@ final class Status {
     private void describe(ZonedDateTime now, LocalDate today, int[] c) {
         if (next.isEmpty()) return;
         int[] cur = next.get(0);
-        if (next.size() < 2) {
+        if (next.size() < 2 || next.get(1)[2] == UNKNOWN) {
             shown = 1;
             String l;
             if (level == GREEN) {
@@ -239,7 +266,7 @@ final class Status {
                 for (int k = 0; k < nowIdx && k < 48; k++) if (c[k] >= Schedule.PROBABLY) earlier = true;
                 l = earlier ? "Сьогодні відключень більше немає" : "Сьогодні відключень не заплановано";
             } else {
-                l = "до " + at(cur[1]) + (cur[1] < 96 ? " · далі графіка ще немає" : "");
+                l = level == UNKNOWN ? "" : "до " + at(cur[1]);
             }
             set(l, "", l, l);
             return;
@@ -248,7 +275,7 @@ final class Status {
         int[] nx = next.get(1);
         String p1 = change(nx[2], cur[2], nx[0]);
         String u = until(now, today, nx[0]);
-        if (next.size() > 2) {
+        if (next.size() > 2 && next.get(2)[2] != UNKNOWN) {
             int[] af = next.get(2);
             line3 = "Потім " + lower(change(af[2], nx[2], af[0]));
         }
@@ -281,7 +308,9 @@ final class Status {
     /** Periods after those the big texts already describe (widget rows). */
     List<int[]> after(int max) {
         List<int[]> r = new ArrayList<>();
-        for (int k = shown; k < next.size() && r.size() < max; k++) r.add(next.get(k));
+        for (int k = shown; k < next.size() && r.size() < max; k++) {
+            if (next.get(k)[2] != UNKNOWN) r.add(next.get(k));
+        }
         return r;
     }
 
@@ -305,7 +334,7 @@ final class Status {
             return s;
         }
         LocalDate today = now.toLocalDate();
-        int[] c = combined(sch, a, today);
+        int[] c = java.util.Arrays.copyOf(combined(sch, a, today), 48);
         if (a.gpvId == 0) java.util.Arrays.fill(c, -1);
         int ni = nowIndex(now);
         s.nowIdx = ni;
@@ -336,9 +365,7 @@ final class Status {
 
         if (!gav && !sgav && a.gpvId == 0 && Works.now(ws, Works.PLANNED, nowSec) == null) {
             // Without a queue we know nothing — never pretend there is light.
-            s.title = "Черга невідома";
-            s.set("Сайт не вказав черги для цієї адреси", "Змініть адресу в налаштуваннях",
-                    "Черга невідома — змініть адресу", "черга невідома");
+            s.title = "Немає графіка";
             s.addCombinedPeriods(c, ws, today, now, ni);
             return s;
         }
@@ -359,6 +386,8 @@ final class Status {
         } else if (code == Schedule.PROBABLY) {
             s.level = YELLOW;
             s.title = "Можливе відключення";
+        } else if (code < 0) {
+            s.title = "Немає графіка";
         } else {
             s.level = GREEN;
             s.title = "Світло є";
@@ -386,13 +415,13 @@ final class Status {
         return s;
     }
 
-    /** The schedule's periods from slot "from" on (up to 6 in all). */
+    /** Today's schedule periods from slot "from" on. */
     private void addPeriods(int[] c, int from) {
         int i = from;
-        while (i < 96 && c[i] >= 0 && next.size() < 6) {
+        while (i < c.length && next.size() < 12) {
             int lvl = Timeline.level(c[i]);
             int e = i;
-            while (e < 96 && c[e] >= 0 && Timeline.level(c[e]) == lvl) e++;
+            while (e < c.length && Timeline.level(c[e]) == lvl) e++;
             next.add(new int[]{i, e, lvl, 0});
             i = e;
         }
@@ -405,7 +434,7 @@ final class Status {
         for (Works.Work w : works) if (w.end > now.toEpochSecond() || w.overdue(now.toEpochSecond())) relevant = true;
         if (!relevant) { addPeriods(c, from); return; }
         for (int[] period : Works.periods(c, works, today, now, from)) {
-            if (next.size() >= 6) break;
+            if (next.size() >= 12) break;
             next.add(period);
         }
     }

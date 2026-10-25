@@ -149,33 +149,42 @@ final class Alerts {
                 JSONObject fresh = new JSONObject();
 
                 int[] t = sch.slots(today, a.gpvId);
-                if (t == null) t = new int[48];
+                if (t == null) { t = new int[48]; Arrays.fill(t, -1); }
                 String ht = Arrays.toString(t);
                 // Only changes from now until midnight matter; the past part is ignored
-                if (tell && old.has(kt) && changedFrom(old.optString(kt), t, ni)) {
+                if (tell && (!old.has(kt) || changedFrom(old.optString(kt), t, ni))
+                        && ScheduleNews.relevant(old.optString(kt), t, ni)) {
                     // same key as the earlier one for this day: the new text replaces the old
                     if (open) {
                         show(ctx, live, endOfToday, Notifier.CH_SCHEDULE, "sch" + a.domId + kt,
-                                a.name + ": графік на сьогодні змінився",
+                                a.name + (ScheduleNews.hasOutages(t, ni)
+                                        ? ": графік на сьогодні змінився" : ": відключення на сьогодні скасовано"),
                                 Status.restOfDay(t, ni), Status.color(Status.YELLOW));
+                        clearDeferred(defer, kt);
                     } else {
                         defer.put("today", kt);
+                        if (!defer.has("base:" + kt)) defer.put("base:" + kt, old.optString(kt));
                     }
                 }
-                fresh.put(kt, ht);
+                if (sch.slots(today, a.gpvId) != null) fresh.put(kt, ht);
+                else if (old.has(kt)) fresh.put(kt, old.optString(kt));
 
                 int[] m = sch.slots(tomorrow, a.gpvId);
                 if (m != null) {
                     String hmh = Arrays.toString(m);
                     String date = tomorrow.format(DateTimeFormatter.ofPattern("dd.MM"));
                     boolean isNew = !old.has(km);
-                    if (tell && (isNew || !hmh.equals(old.optString(km)))) {
+                    if (tell && (isNew || !hmh.equals(old.optString(km)))
+                            && ScheduleNews.relevant(old.optString(km), m, 0)) {
                         if (open) {
                             show(ctx, live, endOfToday + 86400, Notifier.CH_SCHEDULE, "sch" + a.domId + km,
-                                    a.name + (isNew ? ": графік на завтра, " : ": змінився графік на завтра, ") + date,
+                                    a.name + (!ScheduleNews.hasOutages(m, 0) ? ": відключення на завтра скасовано, "
+                                            : isNew ? ": графік на завтра, " : ": змінився графік на завтра, ") + date,
                                     Status.daySummary(m), Status.color(isNew ? Status.GREEN : Status.YELLOW));
+                            clearDeferred(defer, km);
                         } else {
                             defer.put("tm", km);
+                            if (!defer.has("base:" + km)) defer.put("base:" + km, old.optString(km));
                         }
                     }
                     fresh.put(km, hmh);
@@ -203,17 +212,20 @@ final class Alerts {
                         queueNote(ctx, live, a, defer.getJSONObject("q"), sch, today, ni, endOfToday);
                     } else {
                         int[] t = sch.slots(today, a.gpvId);
-                        if (t == null) t = new int[48];
+                        if (t == null) { t = new int[48]; Arrays.fill(t, -1); }
                         int[] m = sch.slots(tomorrow, a.gpvId);
                         String dt = defer.optString("today"), dm = defer.optString("tm");
-                        if (kt.equals(dt) || kt.equals(dm)) {   // (yesterday's "tomorrow" is today now)
+                        if ((kt.equals(dt) || kt.equals(dm))
+                                && ScheduleNews.relevant(defer.optString("base:" + kt), t, ni)) {   // (yesterday's "tomorrow" is today now)
                             show(ctx, live, endOfToday, Notifier.CH_SCHEDULE, "sch" + a.domId + kt,
-                                    a.name + (kt.equals(dt) ? ": графік на сьогодні змінився" : ": графік на сьогодні"),
+                                    a.name + (!ScheduleNews.hasOutages(t, ni) ? ": відключення на сьогодні скасовано"
+                                            : kt.equals(dt) ? ": графік на сьогодні змінився" : ": графік на сьогодні"),
                                     Status.restOfDay(t, ni), Status.color(Status.YELLOW));
                         }
-                        if (km.equals(dm) && m != null) {
+                        if (km.equals(dm) && ScheduleNews.relevant(defer.optString("base:" + km), m, 0)) {
                             show(ctx, live, endOfToday + 86400, Notifier.CH_SCHEDULE, "sch" + a.domId + km,
-                                    a.name + ": графік на завтра, " + tomorrow.format(DateTimeFormatter.ofPattern("dd.MM")),
+                                    a.name + (ScheduleNews.hasOutages(m, 0) ? ": графік на завтра, " : ": відключення на завтра скасовано, ")
+                                            + tomorrow.format(DateTimeFormatter.ofPattern("dd.MM")),
                                     Status.daySummary(m), Status.color(Status.GREEN));
                         }
                     }
@@ -370,7 +382,7 @@ final class Alerts {
     private static void queueNote(Context ctx, JSONObject live, Address a, JSONObject q, Schedule sch,
                                   LocalDate today, int ni, long endOfToday) throws JSONException {
         int[] t = sch.slots(today, a.gpvId);
-        if (t == null) t = new int[48];
+        if (t == null) { t = new int[48]; Arrays.fill(t, -1); }
         int[] m = sch.slots(today.plusDays(1), a.gpvId);
         String from = q.optString("from");
         String title, was;
@@ -388,6 +400,12 @@ final class Alerts {
     }
 
     /** Did any slot from "from" to midnight change? "saved" is Arrays.toString() of the old day. */
+    private static void clearDeferred(JSONObject defer, String day) {
+        if (day.equals(defer.optString("today"))) defer.remove("today");
+        if (day.equals(defer.optString("tm"))) defer.remove("tm");
+        defer.remove("base:" + day);
+    }
+
     private static boolean changedFrom(String saved, int[] now, int from) {
         String[] p = saved.replace("[", "").replace("]", "").split(",");
         if (p.length != now.length) return !saved.equals(Arrays.toString(now));

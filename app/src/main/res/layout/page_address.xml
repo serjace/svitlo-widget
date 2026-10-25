@@ -145,7 +145,7 @@
                     android:layout_marginBottom="4dp"
                     android:fontFamily="sans-serif-medium"
                     android:gravity="center"
-                    android:text="Найближчі години"
+                    android:text="До кінця дня"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="21sp" />
 
@@ -181,12 +181,15 @@
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="21sp" />
 
-                <LinearLayout
-                    android:id="@+id/m_today_works"
+                <TextView
+                    android:id="@+id/m_today_text"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:orientation="vertical" />
+                    android:gravity="center"
+                    android:lineSpacingExtra="2dp"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="20sp" />
 
                 <ua.mk.svitlo.HourGridView
                     android:id="@+id/m_today_grid"
@@ -250,12 +253,7 @@
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="20sp" />
 
-                <LinearLayout
-                    android:id="@+id/m_tomorrow_works"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="vertical" />
+
 
                 <ua.mk.svitlo.HourGridView
                     android:id="@+id/m_tomorrow_grid"

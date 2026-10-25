@@ -98,23 +98,18 @@ final class Store {
     // ---- widgets ----
 
     Address widgetAddress(int widgetId) {
-        long d = p.getLong("w_" + widgetId, -1);
-        Address a = find(d);
-        if (a != null) return a;
-        List<Address> list = addresses();   // a new widget shows the first address of the list
-        return list.isEmpty() ? null : list.get(0);
+        return active();
     }
 
     void cycleWidget(int widgetId) {
         List<Address> list = addresses();
         if (list.isEmpty()) return;
-        Address cur = widgetAddress(widgetId);
+        Address cur = active();
         int idx = 0;
         for (int i = 0; i < list.size(); i++) {
             if (cur != null && list.get(i).domId == cur.domId) idx = i;
         }
-        Address next = list.get((idx + 1) % list.size());
-        p.edit().putLong("w_" + widgetId, next.domId).apply();
+        setActiveDom(list.get((idx + 1) % list.size()).domId);
     }
 
     void removeWidget(int widgetId) {

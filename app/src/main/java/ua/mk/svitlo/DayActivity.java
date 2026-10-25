@@ -64,8 +64,24 @@ public class DayActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        Updater.setListener(this::render);
+        render();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Updater.setListener(null);
+    }
+
+    private void render() {
         load();
         adapter.notifyDataSetChanged();
+        TabLayout tabs = findViewById(R.id.day_tabs);
+        for (int i = 0; i < tabs.getTabCount(); i++) {
+            TabLayout.Tab tab = tabs.getTabAt(i);
+            if (tab != null) tab.setText(dayLabel(i));
+        }
     }
 
     private void load() {
@@ -128,14 +144,13 @@ public class DayActivity extends AppCompatActivity {
             full.setText(a.full + (a.gpvId > 0 ? " · черга " + a.gpvName : ""));
 
             int[] slots = a.gpvId > 0 ? sch.slots(date, a.gpvId) : null;
-            if (slots == null && day == 0 && a.gpvId > 0 && sch.hasData) slots = new int[48];
             boolean partial = slots == null;
             if (partial) slots = Works.knownDay(sch.works(a.domId), date, now);
             WorkRows.fill(itemView.findViewById(R.id.d_works), Works.events(sch.works(a.domId)), date, now);
             list.removeAllViews();
             if (slots == null) {
                 summary.setText(a.gpvId == 0 ? "Черга невідома"
-                        : day == 1 ? "Графік на завтра ще не опубліковано.\nЗазвичай він зʼявляється ввечері."
+                        : day == 1 ? "ГПВ ще не опубліковано"
                         : "Немає даних");
                 grid.setVisibility(View.GONE);
                 card.setVisibility(View.GONE);
@@ -157,6 +172,7 @@ public class DayActivity extends AppCompatActivity {
                 boolean past = day == 0 && e <= ni;
                 boolean current = day == 0 && i <= ni && ni < e;
 
+                if (lvl == Timeline.UNKNOWN) { i = e; continue; }
                 View row = inf.inflate(R.layout.item_period, list, false);
                 row.findViewById(R.id.p_pill).setBackgroundResource(Timeline.pillRes(lvl));
                 ((TextView) row.findViewById(R.id.p_time)).setText(Status.hm(i) + " – " + Status.hm(e));

@@ -20,8 +20,8 @@ import java.util.List;
 
 /**
  * The big 4×2 widget (SmallWidget reuses this for the square one).
- * Background colour = status. Each widget shows one address: the first of the list at first,
- * ⇄ switches to the next one. Tapping opens the app on that address.
+ * Background colour = status. Widgets share the app's selected address.
+ * ⇄ switches that selection. Tapping opens the app on that address.
  */
 public class PowerWidget extends AppWidgetProvider {
     static final String ACTION_SWITCH = "ua.mk.svitlo.SWITCH";
@@ -36,7 +36,8 @@ public class PowerWidget extends AppWidgetProvider {
             int id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
             if (id == AppWidgetManager.INVALID_APPWIDGET_ID) return;
             new Store(ctx).cycleWidget(id);
-            updateOne(ctx, id);
+            redrawAll(ctx);
+            Updater.notifyListener();
         } else if (ACTION_OPEN.equals(intent.getAction())) {
             try {
                 ctx.startActivity(openIntent(ctx, intent.getLongExtra(MainActivity.EXTRA_DOM, 0)));
@@ -65,6 +66,7 @@ public class PowerWidget extends AppWidgetProvider {
         Schedule sch = Schedule.load(st);
         ZonedDateTime now = ZonedDateTime.now(Schedule.ZONE);
         for (int id : ids) mgr.updateAppWidget(id, build(ctx, st, sch, now, id, small()));
+        Updater.scheduleNext(ctx, st, sch, now);
         Updater.ensurePeriodic(ctx);
         if (System.currentTimeMillis() - st.fetchedAt() > 10 * 60 * 1000L) Updater.requestFetch(ctx);
     }
@@ -90,6 +92,11 @@ public class PowerWidget extends AppWidgetProvider {
         for (int id : mgr.getAppWidgetIds(new ComponentName(ctx, SmallWidget.class))) {
             mgr.updateAppWidget(id, build(ctx, st, sch, now, id, true));
         }
+    }
+
+    static void redrawAll(Context ctx) {
+        Store st = new Store(ctx);
+        updateAll(ctx, st, Schedule.load(st), ZonedDateTime.now(Schedule.ZONE), false);
     }
 
     /** Redraws one widget (after it was set up). */
