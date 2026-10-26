@@ -5,9 +5,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.text.SpannableStringBuilder;
-import android.text.Spanned;
-import android.text.style.ForegroundColorSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -34,7 +31,6 @@ import com.google.android.material.snackbar.Snackbar;
 
 import java.time.Instant;
 
-import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -256,7 +252,10 @@ public class MainActivity extends AppCompatActivity {
         adapter.notifyDataSetChanged();
         if (pager.getCurrentItem() != idx) pager.setCurrentItem(idx, false);
         checkChip(pager.getCurrentItem());
-        pager.post(() -> ignorePageEvents = false);
+        pager.post(() -> {
+            ignorePageEvents = false;
+            pager.requestTransform();
+        });
 
         renderUpdate();
     }
@@ -355,23 +354,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private CharSequence legend() {
-        SpannableStringBuilder b = new SpannableStringBuilder();
-        addLegend(b, getColor(Timeline.strongColor(Timeline.ON)), "світло є");
-        addLegend(b, getColor(Timeline.strongColor(Timeline.MAYBE)), "можливе");
-        b.append("\n");
-        addLegend(b, getColor(Timeline.strongColor(Timeline.OFF)), "світла немає");
-        addLegend(b, getColor(R.color.grid_past_fill), "минуло");
-        return b;
-    }
-
-    private void addLegend(SpannableStringBuilder b, int color, String text) {
-        int start = b.length();
-        b.append("■ ");
-        b.setSpan(new ForegroundColorSpan(color), start, start + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        b.append(text).append("    ");
-    }
-
     // ---- pages ----
 
     private class PagesAdapter extends RecyclerView.Adapter<Page> {
@@ -393,12 +375,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private class Page extends RecyclerView.ViewHolder {
-        final View addrBox, cardNext, cardToday, cardTomorrow, mTomorrowMore;
-        final MaterialButton btnAddFirst;
-        final TextView addrName, addrFull, mTodayLabel, mTomorrowLabel,
-                mTodayText, mTomorrowText, mUpdated, mQueues;
+        final View addrBox, cardNext;
+        final MaterialButton btnAddFirst, todayButton, tomorrowButton;
+        final TextView addrName, addrFull, mUpdated, mQueues;
         final LinearLayout mNext;
-        final HourGridView mTodayGrid, mTomorrowGrid;
         final View content;
         final NestedScrollView scroll;
         int boundPos = -1;
@@ -413,18 +393,10 @@ public class MainActivity extends AppCompatActivity {
             btnAddFirst = v.findViewById(R.id.btn_add_first);
             cardNext = v.findViewById(R.id.card_next);
             mNext = v.findViewById(R.id.m_next);
-            mTodayText = v.findViewById(R.id.m_today_text);
-            cardToday = v.findViewById(R.id.card_today);
-            mTodayLabel = v.findViewById(R.id.m_today_label);
-            mTodayGrid = v.findViewById(R.id.m_today_grid);
-            cardTomorrow = v.findViewById(R.id.card_tomorrow);
-            mTomorrowLabel = v.findViewById(R.id.m_tomorrow_label);
-            mTomorrowText = v.findViewById(R.id.m_tomorrow_text);
-            mTomorrowGrid = v.findViewById(R.id.m_tomorrow_grid);
-            mTomorrowMore = v.findViewById(R.id.m_tomorrow_more);
+            todayButton = v.findViewById(R.id.btn_today);
+            tomorrowButton = v.findViewById(R.id.btn_tomorrow);
             mUpdated = v.findViewById(R.id.m_updated);
             mQueues = v.findViewById(R.id.m_queues);
-            ((TextView) v.findViewById(R.id.m_legend)).setText(legend());
         }
 
         void bind(Address a, int pos) {
@@ -462,7 +434,6 @@ public class MainActivity extends AppCompatActivity {
                 btnAddFirst.setVisibility(View.GONE);
             }
 
-            boolean show = a != null && sch.hasData;
             cardNext.setVisibility(a == null ? View.GONE : View.VISIBLE);
             mNext.removeAllViews();
             if (a != null) {
@@ -488,46 +459,10 @@ public class MainActivity extends AppCompatActivity {
                     mNext.addView(row);
                 }
             }
-            cardToday.setVisibility(show ? View.VISIBLE : View.GONE);
-            cardTomorrow.setVisibility(show ? View.VISIBLE : View.GONE);
-            if (show) {
-                LocalDate today = now.toLocalDate();
-                LocalDate tomorrow = today.plusDays(1);
-                DateTimeFormatter f = DateTimeFormatter.ofPattern("dd.MM");
-
-                List<Works.Work> works = Works.events(sch.works(a.domId));
-                mTodayText.setText(Status.cardSummary(sch, a, today, now));
-                mTomorrowText.setText(Status.cardSummary(sch, a, tomorrow, now));
-
-                // the hour grids show these works too: emergency = no light, planned = possible
-                int[] t = a.gpvId > 0 ? sch.slots(today, a.gpvId) : null;
-                if (t == null) {
-                    t = new int[48];
-                    java.util.Arrays.fill(t, -1);
-                }
-                t = Works.paint(t, works, today, now);
-                mTodayLabel.setText("Сьогодні, " + today.format(f));
-                mTodayGrid.setData(t, now.getHour());
-
-                mTomorrowLabel.setText("Завтра, " + tomorrow.format(f));
-                int[] m = null;
-                if (a.gpvId > 0) m = sch.slots(tomorrow, a.gpvId);
-                if (m != null) m = Works.paint(m, works, tomorrow, now);
-                else m = Works.knownDay(works, tomorrow, now);
-                if (m != null) {
-                    mTomorrowGrid.setVisibility(View.VISIBLE);
-                    mTomorrowGrid.setData(m, -1);
-                } else {
-                    mTomorrowGrid.setVisibility(View.GONE);
-                }
-                mTomorrowMore.setVisibility(m != null ? View.VISIBLE : View.GONE);
-
-                // Tap a day to see the whole day
-                cardToday.setOnClickListener(x -> openDay(a, 0));
-                if (m != null) cardTomorrow.setOnClickListener(x -> openDay(a, 1));
-                else cardTomorrow.setOnClickListener(null);
-                cardTomorrow.setClickable(m != null);
-            }
+            todayButton.setVisibility(a == null ? View.GONE : View.VISIBLE);
+            tomorrowButton.setVisibility(a == null ? View.GONE : View.VISIBLE);
+            todayButton.setOnClickListener(a == null ? null : x -> openDay(a, 0));
+            tomorrowButton.setOnClickListener(a == null ? null : x -> openDay(a, 1));
             mUpdated.setText(refreshing ? "Оновлення…" : updated);
             mUpdated.setVisibility(a == null ? View.GONE : View.VISIBLE);
             // All queues of this address (re-read from the website every hour and on ⟳)

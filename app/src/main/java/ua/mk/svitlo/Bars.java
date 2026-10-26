@@ -38,16 +38,14 @@ final class Bars {
 
     /**
      * Makes page swiping lighter and nicer: reacts to a shorter finger movement, keeps the
-     * neighbouring page ready, and fades/shrinks pages slightly while they move.
+     * neighbouring page ready. Pages keep full opacity and size, including after resume.
      */
     static void smoothPager(androidx.viewpager2.widget.ViewPager2 pager) {
         pager.setOffscreenPageLimit(1);
         pager.setPageTransformer((page, position) -> {
-            float a = Math.min(1f, Math.abs(position));
-            page.setAlpha(1f - 0.35f * a);
-            float scale = 1f - 0.05f * a;
-            page.setScaleX(scale);
-            page.setScaleY(scale);
+            page.setAlpha(1f);
+            page.setScaleX(1f);
+            page.setScaleY(1f);
         });
         try {
             View child = pager.getChildAt(0);

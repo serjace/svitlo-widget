@@ -77,6 +77,8 @@ public class DayActivity extends AppCompatActivity {
     private void render() {
         load();
         adapter.notifyDataSetChanged();
+        ViewPager2 pager = findViewById(R.id.day_pager);
+        pager.post(pager::requestTransform);
         TabLayout tabs = findViewById(R.id.day_tabs);
         for (int i = 0; i < tabs.getTabCount(); i++) {
             TabLayout.Tab tab = tabs.getTabAt(i);
@@ -140,53 +142,34 @@ public class DayActivity extends AppCompatActivity {
             if (address == null || sch == null) return;
             Address a = address;
             LocalDate date = now.toLocalDate().plusDays(day);
-            int ni = Status.nowIndex(now);
             full.setText(a.full + (a.gpvId > 0 ? " · черга " + a.gpvName : ""));
 
+            java.util.List<DayOutages.Entry> entries = DayOutages.entries(sch, a, date, now);
             int[] slots = a.gpvId > 0 ? sch.slots(date, a.gpvId) : null;
-            boolean partial = slots == null;
-            if (partial) slots = Works.knownDay(sch.works(a.domId), date, now);
-            WorkRows.fill(itemView.findViewById(R.id.d_works), Works.events(sch.works(a.domId)), date, now);
+            if (slots == null) slots = Works.knownDay(sch.works(a.domId), date, now);
+            else slots = Works.paint(slots, sch.works(a.domId), date, now);
+            summary.setText(entries.isEmpty() ? DayOutages.emptyText(sch, a, date) : "");
+            summary.setVisibility(entries.isEmpty() ? View.VISIBLE : View.GONE);
+            grid.setVisibility(slots == null ? View.GONE : View.VISIBLE);
+            if (slots != null) grid.setData(slots, day == 0 ? now.getHour() : -1);
+            card.setVisibility(entries.isEmpty() ? View.GONE : View.VISIBLE);
             list.removeAllViews();
-            if (slots == null) {
-                summary.setText(a.gpvId == 0 ? "Черга невідома"
-                        : day == 1 ? "ГПВ ще не опубліковано"
-                        : "Немає даних");
-                grid.setVisibility(View.GONE);
-                card.setVisibility(View.GONE);
-                return;
-            }
-            if (!partial) slots = Works.paint(slots, sch.works(a.domId), date, now);
-            summary.setText(partial ? Status.partialDaySummary(slots, a.gpvId > 0) : Status.daySummary(slots));
-            grid.setVisibility(View.VISIBLE);
-            grid.setData(slots, day == 0 ? now.getHour() : -1);
-            card.setVisibility(View.VISIBLE);
-
             LayoutInflater inf = getLayoutInflater();
             int pad = (int) (8 * getResources().getDisplayMetrics().density);
-            int i = 0;
-            while (i < 48) {
-                int lvl = Timeline.level(slots[i]);
-                int e = i;
-                while (e < 48 && Timeline.level(slots[e]) == lvl) e++;
-                boolean past = day == 0 && e <= ni;
-                boolean current = day == 0 && i <= ni && ni < e;
-
-                if (lvl == Timeline.UNKNOWN) { i = e; continue; }
+            for (DayOutages.Entry entry : entries) {
                 View row = inf.inflate(R.layout.item_period, list, false);
-                row.findViewById(R.id.p_pill).setBackgroundResource(Timeline.pillRes(lvl));
-                ((TextView) row.findViewById(R.id.p_time)).setText(Status.hm(i) + " – " + Status.hm(e));
-                String label = lvl == Timeline.OFF ? "Світло відсутнє" : Timeline.name(lvl);
-                if (past) label += " · минуло";
-                if (current) label += " · зараз";
+                row.findViewById(R.id.p_pill).setBackgroundResource(Timeline.pillRes(entry.level));
+                ((TextView) row.findViewById(R.id.p_time)).setText(entry.time);
+                String label = entry.label;
+                if (entry.past) label += " · минуло";
+                if (entry.current) label += " · зараз";
                 ((TextView) row.findViewById(R.id.p_label)).setText(label);
-                if (past) row.setAlpha(0.45f);
-                if (current) {
+                if (entry.past) row.setAlpha(0.45f);
+                if (entry.current) {
                     row.setBackgroundResource(R.drawable.row_now_bg);
                     row.setPadding(pad, pad, pad, pad);
                 }
                 list.addView(row);
-                i = e;
             }
         }
     }
