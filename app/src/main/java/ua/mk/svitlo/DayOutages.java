@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-/** One chronological list of the day's known outages, retaining each source's details. */
+/** Published queue periods plus known works; unpublished hours are never treated as green. */
 final class DayOutages {
     static final class Entry {
         long start, end;
@@ -22,6 +22,17 @@ final class DayOutages {
         long sec = now.toEpochSecond();
         int[] queue = address.gpvId > 0 ? sch.slots(day, address.gpvId) : null;
         if (queue != null) {
+            // Green periods must agree with the grid: maintenance/emergencies override them.
+            int[] painted = Works.paint(queue, sch.works(address.domId), day, now);
+            for (int[] green : Status.runs(painted, Schedule.ENABLE, Schedule.ENABLE)) {
+                Entry e = new Entry();
+                e.start = Status.timeOf(day, green[0]).toEpochSecond();
+                e.end = Status.timeOf(day, green[1]).toEpochSecond();
+                e.level = Timeline.ON;
+                e.time = Status.hm(green[0]) + " – " + Status.hm(green[1]);
+                e.label = "Світло є за ГПВ";
+                result.add(e);
+            }
             int i = 0;
             while (i < queue.length) {
                 int level = Timeline.level(queue[i]), end = i + 1;

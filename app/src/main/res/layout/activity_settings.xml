@@ -242,20 +242,6 @@
                         app:singleSelection="true">
 
                         <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btn_int_10"
-                            style="?attr/materialButtonOutlinedStyle"
-                            android:layout_width="0dp"
-                            android:layout_height="56dp"
-                            android:layout_weight="1"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:maxLines="1"
-                            android:paddingStart="4dp"
-                            android:paddingEnd="4dp"
-                            android:text="кожні 10 хв"
-                            android:textSize="16sp" />
-
-                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/btn_int_5"
                             style="?attr/materialButtonOutlinedStyle"
                             android:layout_width="0dp"
@@ -266,7 +252,49 @@
                             android:maxLines="1"
                             android:paddingStart="4dp"
                             android:paddingEnd="4dp"
-                            android:text="кожні 5 хв"
+                            android:text="5 хв"
+                            android:textSize="16sp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_int_10"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="56dp"
+                            android:layout_weight="1"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:maxLines="1"
+                            android:paddingStart="4dp"
+                            android:paddingEnd="4dp"
+                            android:text="10 хв"
+                            android:textSize="16sp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_int_15"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="56dp"
+                            android:layout_weight="1"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:maxLines="1"
+                            android:paddingStart="4dp"
+                            android:paddingEnd="4dp"
+                            android:text="15 хв"
+                            android:textSize="16sp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_int_30"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="56dp"
+                            android:layout_weight="1"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:maxLines="1"
+                            android:paddingStart="4dp"
+                            android:paddingEnd="4dp"
+                            android:text="30 хв"
                             android:textSize="16sp" />
                     </ua.mk.svitlo.AdaptiveToggleGroup>
 
@@ -274,7 +302,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="Поки екран увімкнений. Також дані оновлюються щоразу, коли ви відкриваєте застосунок."
+                        android:text="Приблизний інтервал автооновлення. Оновити зараз можна кнопкою ↻ або потягнувши головний екран вниз. У фоні Android може відкласти перевірку."
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:textSize="15sp" />
 
@@ -363,7 +391,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:text="Утримуйте палець на порожньому місці головного екрана → «Віджети» → «Світло». Є два розміри: великий (4×2) і квадратний (2×2). Новий віджет показує першу адресу зі списку вище.&#10;&#10;Колір віджета показує статус: зелений — світло є, жовтий — можливе відключення, червоний — світла немає.&#10;&#10;Якщо розтягнути великий віджет, він покаже більше найближчих годин.&#10;&#10;Щоб перемкнути адресу на віджеті (Дім ⇄ Робота), торкніться значка ⇄ вгорі віджета. Торкання решти віджета відкриває застосунок на цій адресі.&#10;&#10;Дані на віджеті оновлюються самі приблизно кожні 10 хвилин."
+                        android:text="Утримуйте палець на порожньому місці головного екрана → «Віджети» → «Світло». Є два розміри: великий (4×2) і квадратний (2×2). Віджети й застосунок показують спільну обрану адресу.&#10;&#10;Колір віджета показує статус: зелений — світло є, жовтий — можливе відключення, червоний — світла немає.&#10;&#10;Якщо розтягнути великий віджет, він покаже більше найближчих годин.&#10;&#10;Щоб перемкнути адресу на віджеті (Дім ⇄ Робота), торкніться значка ⇄ вгорі віджета. Торкання решти віджета відкриває застосунок на цій адресі.&#10;&#10;Дані на віджеті оновлюються за вибраним інтервалом; типово — приблизно раз на 30 хвилин. Статус і час до відключення змінюються за вже завантаженим розкладом."
                         android:textColor="?attr/colorOnSurface"
                         android:textSize="16sp" />
                 </LinearLayout>

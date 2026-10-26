@@ -41,6 +41,8 @@ import java.util.List;
 public class SettingsActivity extends AppCompatActivity {
     private static final int[] LEADS = {10, 15, 30};
     private static final int[] CHIPS = {R.id.chip_10, R.id.chip_15, R.id.chip_30};
+    private static final int[] INTERVALS = {5, 10, 15, 30};
+    private static final int[] INTERVAL_BUTTONS = {R.id.btn_int_5, R.id.btn_int_10, R.id.btn_int_15, R.id.btn_int_30};
     private static final float[] SCALES = {0.85f, 1f, 1.15f, 1.3f};
     private static final String[] SCALE_NAMES = {"Менший", "Звичайний", "Більший", "Найбільший"};
 
@@ -187,16 +189,21 @@ public class SettingsActivity extends AppCompatActivity {
             }
         });
 
-        // How often to check the website: 10 (default) or 5 minutes
+        // Automatic checks: 5, 10, 15 or 30 minutes (default).
         MaterialButtonToggleGroup interval = findViewById(R.id.tg_interval);
-        interval.check(st.interval() == 5 ? R.id.btn_int_5 : R.id.btn_int_10);
+        for (int i = 0; i < INTERVALS.length; i++) {
+            if (INTERVALS[i] == st.interval()) interval.check(INTERVAL_BUTTONS[i]);
+        }
         interval.addOnButtonCheckedListener((group, id, isChecked) -> {
             if (!isChecked) return;
-            int m = id == R.id.btn_int_5 ? 5 : 10;
-            Store s = new Store(this);
-            if (s.interval() != m) {
-                s.setInterval(m);
-                runTick();   // plans the next check with the new interval
+            for (int i = 0; i < INTERVALS.length; i++) {
+                if (id != INTERVAL_BUTTONS[i]) continue;
+                Store s = new Store(this);
+                if (s.interval() != INTERVALS[i]) {
+                    s.setInterval(INTERVALS[i]);
+                    new Thread(() -> Updater.tickDue(getApplicationContext())).start();
+                }
+                break;
             }
         });
     }

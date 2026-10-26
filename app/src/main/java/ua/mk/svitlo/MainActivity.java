@@ -186,8 +186,8 @@ public class MainActivity extends AppCompatActivity {
         PowerWidget.redrawAll(this);
         Updater.scheduleNext(this, st, sch, now);
         Updater.ensurePeriodic(this);
-        // fresh data every time the app is opened (icon, widget, or back from recent apps)
-        if (!st.addresses().isEmpty() && System.currentTimeMillis() - st.fetchedAt() > 20 * 1000L) {
+        // Opening the app reuses fresh cached data instead of bypassing the chosen interval.
+        if (!st.addresses().isEmpty() && st.autoFetchDue(System.currentTimeMillis())) {
             refresh();
         }
         // look for a new app version every time the app is opened
@@ -216,7 +216,8 @@ public class MainActivity extends AppCompatActivity {
         refreshing = true;
         setFooters("Оновлення…");
         new Thread(() -> {
-            Updater.tick(getApplicationContext(), true, true);   // queues too
+            if (byUser) Updater.tick(getApplicationContext(), true, true);   // explicit refresh: queues too
+            else Updater.tickDue(getApplicationContext());
             runOnUiThread(() -> {
                 refreshing = false;
                 swipe.setRefreshing(false);

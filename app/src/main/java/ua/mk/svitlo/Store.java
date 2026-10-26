@@ -17,6 +17,7 @@ import java.util.List;
 
 /** Everything the app remembers on the phone. */
 final class Store {
+    private static final Object FETCH_LOCK = new Object();
     static final String F_BEFORE = "n_before";
     static final String F_RETURN = "n_return";
     static final String F_EMERGENCY = "n_emerg";
@@ -145,15 +146,47 @@ final class Store {
     }
 
     /**
-     * How often to download fresh data while the screen is on, in minutes: 10 (default) or 5.
-     * These checks never wake a sleeping phone, so they cost almost no battery.
+     * Automatic request interval in minutes. Explicit choices survive app upgrades.
      */
     int interval() {
-        return p.getInt("interval", 10) == 5 ? 5 : 10;
+        return RefreshPlan.interval(p.getInt("interval", RefreshPlan.DEFAULT_MINUTES));
     }
 
     void setInterval(int minutes) {
-        p.edit().putInt("interval", minutes).apply();
+        synchronized (FETCH_LOCK) {
+            p.edit().putInt("interval", RefreshPlan.interval(minutes)).remove("fetch_due").apply();
+        }
+    }
+
+    /** One persisted randomized deadline, shared by alarms, jobs, widgets and app opening. */
+    long nextFetchAt(long now) {
+        synchronized (FETCH_LOCK) {
+            long last = p.getLong("fetch_attempt", fetchedAt());
+            long saved = p.getLong("fetch_due", 0);
+            if (last <= 0) return now;
+            if (last <= now && saved > 0) return saved;
+            int offset = java.util.concurrent.ThreadLocalRandom.current().nextInt(
+                    -RefreshPlan.JITTER_SECONDS, RefreshPlan.JITTER_SECONDS + 1);
+            long next = RefreshPlan.nextAt(now, last, saved, interval(), offset);
+            SharedPreferences.Editor edit = p.edit().putLong("fetch_due", next);
+            if (last > now) edit.putLong("fetch_attempt", now);
+            edit.apply();
+            return next;
+        }
+    }
+
+    boolean autoFetchDue(long now) {
+        return now >= nextFetchAt(now);
+    }
+
+    /** Reserve before network I/O: failures and simultaneous triggers cannot cause a burst. */
+    void markFetchAttempt(long now) {
+        synchronized (FETCH_LOCK) {
+            int offset = java.util.concurrent.ThreadLocalRandom.current().nextInt(
+                    -RefreshPlan.JITTER_SECONDS, RefreshPlan.JITTER_SECONDS + 1);
+            p.edit().putLong("fetch_attempt", now)
+                    .putLong("fetch_due", RefreshPlan.after(now, interval(), offset)).apply();
+        }
     }
 
     // ---- app updates ----

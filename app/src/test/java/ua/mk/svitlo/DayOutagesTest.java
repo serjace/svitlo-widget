@@ -37,23 +37,28 @@ public class DayOutagesTest {
         int[] grid = Works.knownDay(s.works(1), day, now);
         assertEquals(-1, grid[0]); assertEquals(Schedule.PROBABLY, grid[18]); assertEquals(-1, grid[34]);
     }
-    @Test public void queueOutagesAndWorksAreSortedWithoutGreenRows() {
+    @Test public void publishedQueueIncludesGreenPeriodsAroundOutagesAndWorks() {
         int[] slots = new int[48]; Arrays.fill(slots, 14, 16, Schedule.OFF); slots[36] = Schedule.PROBABLY;
         Schedule s = schedule(slots);
         s.works.put(1L, Collections.singletonList(work(1, day, 9, day, 17)));
         List<DayOutages.Entry> entries = DayOutages.entries(s, address(), day, now);
-        assertEquals(3, entries.size());
-        assertEquals("07:00 – 08:00", entries.get(0).time);
-        assertTrue(entries.get(0).past);
-        assertEquals("09:00 – 17:00", entries.get(1).time);
-        assertEquals("18:00 – 18:30", entries.get(2).time);
-        assertTrue(entries.get(2).label.contains("Можливе відключення за ГПВ"));
-        for (DayOutages.Entry e : entries) assertTrue(e.level > Timeline.ON);
+        assertEquals(7, entries.size());
+        assertEquals("00:00 – 07:00", entries.get(0).time);
+        assertEquals(Timeline.ON, entries.get(0).level);
+        assertEquals("07:00 – 08:00", entries.get(1).time);
+        assertTrue(entries.get(1).past);
+        assertEquals("08:00 – 09:00", entries.get(2).time);
+        assertEquals("09:00 – 17:00", entries.get(3).time);
+        assertTrue(entries.get(3).current);
+        assertEquals("17:00 – 18:00", entries.get(4).time);
+        assertEquals("18:00 – 18:30", entries.get(5).time);
+        assertTrue(entries.get(5).label.contains("Можливе відключення за ГПВ"));
+        assertEquals("18:30 – 24:00", entries.get(6).time);
     }
     @Test public void confirmedAndScheduledOffSlotsFormOneQueuePeriod() {
         int[] slots = new int[48]; slots[18] = Schedule.OFF; slots[19] = Schedule.SURE_OFF;
         List<DayOutages.Entry> entries = DayOutages.entries(schedule(slots), address(), day, now);
-        assertEquals(1, entries.size()); assertEquals("09:00 – 10:00", entries.get(0).time);
+        assertEquals(3, entries.size()); assertEquals("09:00 – 10:00", entries.get(1).time);
     }
     @Test public void overnightWorksAppearInBothDaysAndEndAtMidnightDoesNotLeak() {
         Schedule s = schedule(null);
@@ -77,7 +82,11 @@ public class DayOutagesTest {
         assertTrue(DayOutages.entries(s, address(), day, now).isEmpty());
         assertEquals("Розклад ще не опубліковано", DayOutages.emptyText(s, address(), day));
         s = schedule(new int[48]);
-        assertTrue(DayOutages.entries(s, address(), day, now).isEmpty());
+        List<DayOutages.Entry> published = DayOutages.entries(s, address(), day, now);
+        assertEquals(1, published.size());
+        assertEquals(Timeline.ON, published.get(0).level);
+        assertEquals("00:00 – 24:00", published.get(0).time);
+        assertTrue(published.get(0).current);
         assertEquals("Відключень не заплановано", DayOutages.emptyText(s, address(), day));
     }
     @Test public void activeEmergencyQueueIsShownOnlyTodayWithoutInventedEnd() {
@@ -85,5 +94,41 @@ public class DayOutagesTest {
         DayOutages.Entry e = DayOutages.entries(s, a, day, now).get(0);
         assertTrue(e.current); assertEquals(-1, e.end); assertEquals("Зараз", e.time);
         assertTrue(DayOutages.entries(s, a, day.plusDays(1), now).isEmpty());
+    }
+
+    @Test public void screenshotTodayHasCurrentGreenBeforeEveningOutage() {
+        int[] slots = new int[48]; slots[42] = Schedule.PROBABLY;
+        Arrays.fill(slots, 43, 48, Schedule.OFF);
+        ZonedDateTime afternoon = day.atTime(14, 4).atZone(Schedule.ZONE);
+        List<DayOutages.Entry> entries = DayOutages.entries(schedule(slots), address(), day, afternoon);
+        assertEquals(3, entries.size());
+        assertEquals("00:00 – 21:00", entries.get(0).time);
+        assertEquals(Timeline.ON, entries.get(0).level);
+        assertTrue(entries.get(0).current);
+        assertEquals("21:00 – 21:30", entries.get(1).time);
+        assertEquals("21:30 – 24:00", entries.get(2).time);
+    }
+
+    @Test public void screenshotTomorrowHasGreenOnBothSidesOfPlannedWorks() {
+        int[] slots = new int[48]; slots[0] = Schedule.PROBABLY;
+        Schedule s = schedule(slots);
+        s.works.put(1L, Collections.singletonList(work(1, day, 9, day, 18)));
+        List<DayOutages.Entry> entries = DayOutages.entries(s, address(), day, now.minusDays(1));
+        assertEquals(4, entries.size());
+        assertEquals("00:00 – 00:30", entries.get(0).time);
+        assertEquals("00:30 – 09:00", entries.get(1).time);
+        assertEquals(Timeline.ON, entries.get(1).level);
+        assertEquals("09:00 – 18:00", entries.get(2).time);
+        assertEquals("18:00 – 24:00", entries.get(3).time);
+        assertEquals(Timeline.ON, entries.get(3).level);
+        for (DayOutages.Entry e : entries) assertFalse(e.current);
+    }
+
+    @Test public void missingQueueNeverInventsGreenPeriods() {
+        Address a = address(); a.gpvId = 0;
+        Schedule s = schedule(new int[48]);
+        s.works.put(1L, Collections.singletonList(work(1, day, 9, day, 18)));
+        List<DayOutages.Entry> entries = DayOutages.entries(s, a, day, now);
+        assertEquals(1, entries.size()); assertEquals(Timeline.MAYBE, entries.get(0).level);
     }
 }

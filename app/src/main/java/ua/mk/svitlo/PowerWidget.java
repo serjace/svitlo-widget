@@ -68,7 +68,7 @@ public class PowerWidget extends AppWidgetProvider {
         for (int id : ids) mgr.updateAppWidget(id, build(ctx, st, sch, now, id, small()));
         Updater.scheduleNext(ctx, st, sch, now);
         Updater.ensurePeriodic(ctx);
-        if (System.currentTimeMillis() - st.fetchedAt() > 10 * 60 * 1000L) Updater.requestFetch(ctx);
+        if (st.autoFetchDue(System.currentTimeMillis())) Updater.requestFetch(ctx);
     }
 
     /** The widget was resized: redraw it. */

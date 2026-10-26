@@ -50,11 +50,24 @@ final class Updater {
 
     /** @param queuesNow also re-read every address's queues right now (⟳ in the app) */
     static void tick(Context ctx, boolean fetch, boolean queuesNow) {
+        tick(ctx, fetch, queuesNow, true);
+    }
+
+    /** Automatic triggers must all respect the same deadline, rechecked under LOCK. */
+    static void tickDue(Context ctx) {
+        tick(ctx, true, false, false);
+    }
+
+    private static void tick(Context ctx, boolean fetch, boolean queuesNow, boolean force) {
         Context app = ctx.getApplicationContext();
         synchronized (LOCK) {
             Store st = new Store(app);
-            if (fetch && fetchAll(st, queuesNow) && System.currentTimeMillis() - st.updateCheckedAt() > 3600 * 1000L) {
-                AppUpdate.check(app, st);   // new version of the app on GitHub? (every hour)
+            long attemptAt = System.currentTimeMillis();
+            if (fetch && !st.addresses().isEmpty() && (force || st.autoFetchDue(attemptAt))) {
+                st.markFetchAttempt(attemptAt);
+                if (fetchAll(st, queuesNow) && System.currentTimeMillis() - st.updateCheckedAt() > 3600 * 1000L) {
+                    AppUpdate.check(app, st);   // new version of the app on GitHub? (every hour)
+                }
             }
             Schedule sch = Schedule.load(st);
             ZonedDateTime now = ZonedDateTime.now(Schedule.ZONE);
@@ -281,10 +294,13 @@ final class Updater {
         PendingIntent check = PendingIntent.getBroadcast(ctx, 2,
                 new Intent(ctx, AlarmReceiver.class).setAction(ACTION_CHECK),
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        am.set(AlarmManager.RTC, System.currentTimeMillis() + st.interval() * 60 * 1000L, check);
+        long wallNow = System.currentTimeMillis();
+        long due = st.nextFetchAt(wallNow);
+        // If a network-constrained job is waiting offline, avoid an immediate alarm loop.
+        am.set(AlarmManager.RTC, due > wallNow ? due : wallNow + 5 * 60_000L, check);
     }
 
-    /** Download fresh data every 15 minutes (Android's minimum) when there is internet. */
+    /** Background fallback every 15 minutes; SyncJob downloads only when actually due. */
     static void ensurePeriodic(Context ctx) {
         JobScheduler js = ctx.getSystemService(JobScheduler.class);
         if (js == null || js.getPendingJob(JOB_PERIODIC) != null) return;
