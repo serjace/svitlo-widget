@@ -24,9 +24,11 @@ final class Store {
     static final String F_SCHEDULE = "n_sched";
 
     private final SharedPreferences p;
+    final DataHealth health;
 
     Store(Context ctx) {
         p = ctx.getApplicationContext().getSharedPreferences("svitlo", Context.MODE_PRIVATE);
+        health = new DataHealth(p);
     }
 
     // ---- addresses ----
@@ -69,7 +71,7 @@ final class Store {
             if (it.next().domId == domId) it.remove();
         }
         saveAddresses(list);
-        p.edit().remove("ns_" + domId).remove("c_w_" + domId).apply();
+        p.edit().remove("ns_" + domId).remove("c_w_" + domId).remove("health_work_" + domId).apply();
     }
 
     /** An address was changed to another house: move widget links and the "shown" mark to it. */
@@ -84,6 +86,7 @@ final class Store {
         if (p.getLong("active", -1) == oldDom) e.putLong("active", newDom);
         e.remove("ns_" + oldDom);
         e.remove("c_w_" + oldDom);
+        e.remove("health_work_" + oldDom);
         e.apply();
     }
 
@@ -270,11 +273,15 @@ final class Store {
 
     String updatedLabel() {
         long f = fetchedAt();
-        if (f == 0) return "Дані ще не завантажено";
+        if (f == 0) {
+            String problem = health.problemLabel(this, System.currentTimeMillis());
+            return problem.isEmpty() ? "Дані ще не завантажено" : problem;
+        }
         ZonedDateTime t = Instant.ofEpochMilli(f).atZone(Schedule.ZONE);
         boolean today = t.toLocalDate().equals(LocalDate.now(Schedule.ZONE));
         String s = "Оновлено " + t.format(DateTimeFormatter.ofPattern(today ? "HH:mm" : "dd.MM HH:mm"));
-        if (lastError() > f) s += " · немає звʼязку";
+        String problem = health.problemLabel(this, System.currentTimeMillis());
+        if (!problem.isEmpty()) s += " · " + problem;
         return s;
     }
 

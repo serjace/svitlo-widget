@@ -14,6 +14,18 @@ import java.nio.charset.StandardCharsets;
 /** Talks to the public data feed behind https://off.energy.mk.ua (and www.energy.mk.ua) */
 final class Api {
     static final String BASE = "https://off.energy.mk.ua";
+    private static volatile android.content.Context app;
+    private static volatile DataHealth health;
+
+    static void initialize(android.content.Context context) {
+        app = context.getApplicationContext();
+        health = new DataHealth(app.getSharedPreferences("svitlo", android.content.Context.MODE_PRIVATE));
+    }
+
+    static final class Failure extends IOException {
+        final DataProblem problem;
+        Failure(DataProblem problem) { super(problem.kind + (problem.code > 0 ? " HTTP " + problem.code : "")); this.problem = problem; }
+    }
 
     private Api() {}
 
@@ -27,6 +39,18 @@ final class Api {
     }
 
     private static String request(String url, String json) throws IOException {
+        String origin = url.startsWith(BASE + "/") ? DataHealth.OFF : DataHealth.WORKS;
+        DataHealth diagnostics = health;
+        long now = System.currentTimeMillis();
+        if (diagnostics != null && diagnostics.pauseUntil(origin) > now) {
+            throw new Failure(new DataProblem(DataProblem.PAUSED, diagnostics.pauseCode(origin), diagnostics.pauseUntil(origin)));
+        }
+        if (app != null) {
+            android.net.ConnectivityManager manager = app.getSystemService(android.net.ConnectivityManager.class);
+            if (manager != null && manager.getActiveNetwork() == null) {
+                throw new Failure(new DataProblem(DataProblem.OFFLINE, 0, 0));
+            }
+        }
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         c.setConnectTimeout(10000);
         c.setReadTimeout(15000);
@@ -43,9 +67,11 @@ final class Api {
             }
             int code = c.getResponseCode();
             if (code != 200) {
+                long retryAt = DataProblem.retryAt(c.getHeaderField("Retry-After"), System.currentTimeMillis());
+                if (diagnostics != null && retryAt > System.currentTimeMillis()) diagnostics.defer(origin, code, retryAt);
                 InputStream err = c.getErrorStream();
                 if (err != null) err.close();
-                throw new IOException("HTTP " + code);
+                throw new Failure(new DataProblem(DataProblem.HTTP, code, retryAt));
             }
             // Read to the end and close the stream, but don't disconnect(): Android then keeps
             // the connection open for the next request to the same site, which saves setting up

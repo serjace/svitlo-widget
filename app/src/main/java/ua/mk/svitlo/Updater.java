@@ -97,6 +97,7 @@ final class Updater {
         String[] paths = {cachedTs == null ? "/api/schedule/time-series" : null, "/api/v2/schedule/active",
                 "/api/outage-queue/by-type/1", "/api/outage-queue/by-type/2", "/api/outage-queue/by-type/3"};
         String[] got = new String[paths.length];
+        DataProblem[] failures = new DataProblem[paths.length];
         List<Runnable> jobs = new ArrayList<>();
         for (int i = 0; i < paths.length; i++) {
             if (paths[i] == null) continue;
@@ -104,15 +105,19 @@ final class Updater {
             jobs.add(() -> {
                 try {
                     got[k] = Api.get(paths[k]);
-                } catch (Exception ignored) {
+                } catch (Exception e) {
+                    failures[k] = DataProblem.from(e);
                 }
             });
         }
         for (Address a : list) {
             jobs.add(() -> {
                 try {
-                    st.saveWorks(a.domId, Works.fetch(a.domId));
-                } catch (Exception ignored) {
+                    String result = Works.fetch(a.domId);
+                    st.saveWorks(a.domId, result);
+                    st.health.record("work_" + a.domId, null, new JSONObject(result).getJSONArray("data").length(), System.currentTimeMillis());
+                } catch (Exception e) {
+                    st.health.record("work_" + a.domId, DataProblem.from(e), 0, System.currentTimeMillis());
                 }
             });
         }
@@ -120,9 +125,16 @@ final class Updater {
         try {
             String ts = cachedTs != null ? cachedTs : got[0];
             // make sure everything is valid before saving
-            for (int i = 0; i < got.length; i++) new JSONArray(i == 0 ? ts : got[i]);
+            Schedule.validatePayload(ts, got[1], got[2], got[3], got[4]);
             st.saveCache(ts, got[1], got[2], got[3], got[4]);
+            st.health.record("gpv", null, new JSONArray(got[1]).length(), System.currentTimeMillis());
         } catch (Exception e) {
+            DataProblem problem = DataProblem.from(e);
+            for (int i = 0; i < failures.length; i++) {
+                if (failures[i] != null) { problem = failures[i]; break; }
+                if (paths[i] != null && got[i] == null) problem = new DataProblem(DataProblem.TIMEOUT, 0, 0);
+            }
+            st.health.record("gpv", problem, 0, System.currentTimeMillis());
             st.setLastError(System.currentTimeMillis());
             return false;
         }
@@ -195,7 +207,8 @@ final class Updater {
                 ns.put("qchg", ev);
                 st.saveNotifyState(a.domId, ns);
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            st.health.record("gpv", DataProblem.from(e), 0, System.currentTimeMillis());
         }
         return changed;
     }

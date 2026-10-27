@@ -64,8 +64,20 @@ final class Works {
         body.put("to", today.plusDays(2).toEpochSecond() - 1);
         body.put("house_id", domId);
         String json = Api.post(URL, body.toString());
-        new JSONObject(json).getJSONArray("data");   // make sure it's the real answer
+        validatePayload(json);
         return json;
+    }
+
+    static void validatePayload(String json) throws org.json.JSONException {
+        JSONArray rows = new JSONObject(json).getJSONArray("data");
+        for (int i = 0; i < rows.length(); i++) {
+            JSONObject row = rows.getJSONObject(i);
+            String type = row.optString("type");
+            if (!"PLAN".equals(type) && !"AVARIYA".equals(type)) continue;
+            Instant.parse(row.getString("start_at"));
+            Instant.parse(row.getString("finish_at"));
+            Instant.parse(row.getString("updated_at"));
+        }
     }
 
     static List<Work> parse(String json) {

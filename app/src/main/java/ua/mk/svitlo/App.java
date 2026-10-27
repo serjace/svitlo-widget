@@ -8,6 +8,7 @@ public class App extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        Api.initialize(this);
         // Android 12+: take the app colours from the wallpaper (Material You)
         DynamicColors.applyToActivitiesIfAvailable(this);
     }

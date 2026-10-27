@@ -224,8 +224,9 @@ public class MainActivity extends AppCompatActivity {
                 render();
                 if (byUser && !isFinishing()) {
                     Store st = new Store(this);
-                    String msg = st.lastError() > st.fetchedAt()
-                            ? "Не вдалося оновити — немає звʼязку"
+                    String problem = st.health.problemLabel(st, System.currentTimeMillis());
+                    String msg = !problem.isEmpty()
+                            ? problem
                             : "Оновлено о " + Instant.ofEpochMilli(st.fetchedAt()).atZone(Schedule.ZONE)
                                     .format(DateTimeFormatter.ofPattern("HH:mm"));
                     Snackbar.make(pager, msg, Snackbar.LENGTH_SHORT).show();

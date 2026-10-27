@@ -82,6 +82,16 @@ public class SettingsActivity extends AppCompatActivity {
         Bars.apply(this, findViewById(R.id.settings_root), bottom -> Bars.padBottom(content, bottom));
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setNavigationOnClickListener(v -> finish());
+        findViewById(R.id.btn_copy_diagnostics).setOnClickListener(v -> {
+            Store store = new Store(this);
+            String report = store.health.report(store, AppUpdate.installedName(this), System.currentTimeMillis());
+            android.content.ClipboardManager clipboard = getSystemService(android.content.ClipboardManager.class);
+            if (clipboard != null) {
+                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Стан даних Світло", report));
+                if (Build.VERSION.SDK_INT < 33) android.widget.Toast.makeText(this,
+                        "Діагностику скопійовано", android.widget.Toast.LENGTH_SHORT).show();
+            }
+        });
 
         addrList = findViewById(R.id.addr_list);
         addrEmpty = findViewById(R.id.addr_empty);
@@ -236,8 +246,22 @@ public class SettingsActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        Updater.setListener(this::renderDiagnostics);
         renderAddresses();
         updateBatteryButton();
+        renderDiagnostics();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Updater.setListener(null);
+    }
+
+    private void renderDiagnostics() {
+        Store store = new Store(this);
+        ((TextView) findViewById(R.id.m_diagnostics)).setText(store.health.report(
+                store, AppUpdate.installedName(this), System.currentTimeMillis()));
     }
 
     private void bindSwitch(int id, String key, Store st) {

@@ -115,6 +115,46 @@ final class Schedule {
         return s;
     }
 
+    /** Validate a candidate before replacing the last usable cache. Empty active lists are valid. */
+    static void validatePayload(String times, String active, String q1, String q2, String q3) throws Exception {
+        JSONArray ts = new JSONArray(times);
+        java.util.Set<Integer> slots = new java.util.HashSet<>();
+        java.util.Set<Integer> ids = new java.util.HashSet<>();
+        for (int i = 0; i < ts.length(); i++) {
+            JSONObject row = ts.getJSONObject(i);
+            if (!ids.add(row.getInt("id"))) throw new IllegalArgumentException();
+            java.time.LocalTime time = java.time.LocalTime.parse(row.getString("start"));
+            if (time.getSecond() != 0 || time.getMinute() % 30 != 0) throw new IllegalArgumentException();
+            slots.add(time.getHour() * 2 + time.getMinute() / 30);
+        }
+        if (ts.length() != 48 || slots.size() != 48) throw new IllegalArgumentException();
+        JSONArray days = new JSONArray(active);
+        for (int i = 0; i < days.length(); i++) {
+            JSONObject day = days.getJSONObject(i);
+            Instant.parse(day.getString("from"));
+            JSONArray series = day.optJSONArray("series");
+            if (series == null) {
+                if (day.has("series") && !day.isNull("series")) throw new IllegalArgumentException();
+                continue;
+            }
+            for (int j = 0; j < series.length(); j++) {
+                JSONObject row = series.getJSONObject(j);
+                if (!ids.contains(row.getInt("time_series_id"))) throw new IllegalArgumentException();
+                row.getInt("outage_queue_id");
+                String type = row.getString("type");
+                if (!"ENABLE".equals(type) && !"OFF".equals(type) && !"SURE_OFF".equals(type)
+                        && !"PROBABLY_OFF".equals(type)) throw new IllegalArgumentException();
+            }
+        }
+        for (String queues : new String[]{q1, q2, q3}) {
+            JSONArray rows = new JSONArray(queues);
+            for (int i = 0; i < rows.length(); i++) {
+                JSONObject row = rows.getJSONObject(i);
+                row.getInt("id"); row.getInt("enabled");
+            }
+        }
+    }
+
     void includeDefaultToday(LocalDate checkedDay, LocalDate today) {
         if (hasData && today.equals(checkedDay) && !days.containsKey(today)) {
             days.put(today, new HashMap<>());
