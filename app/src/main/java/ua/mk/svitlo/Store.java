@@ -161,13 +161,13 @@ final class Store {
         }
     }
 
-    /** One persisted randomized deadline, shared by alarms, jobs, widgets and app opening. */
+    /** One shared deadline, no later than midnight after the last attempt (also for old installs). */
     long nextFetchAt(long now) {
         synchronized (FETCH_LOCK) {
             long last = p.getLong("fetch_attempt", fetchedAt());
             long saved = p.getLong("fetch_due", 0);
             if (last <= 0) return now;
-            if (last <= now && saved > 0) return saved;
+            if (last <= now && saved > 0) return RefreshPlan.nextAt(now, last, saved, interval(), 0);
             int offset = java.util.concurrent.ThreadLocalRandom.current().nextInt(
                     -RefreshPlan.JITTER_SECONDS, RefreshPlan.JITTER_SECONDS + 1);
             long next = RefreshPlan.nextAt(now, last, saved, interval(), offset);

@@ -239,7 +239,7 @@ final class Updater {
     static void scheduleNext(Context ctx, Store st, Schedule sch, ZonedDateTime now) {
         LocalDate today = now.toLocalDate();
         int ni = Status.nowIndex(now);
-        ZonedDateTime next = Status.timeOf(today, 48).plusSeconds(5);   // tomorrow 00:00
+        ZonedDateTime next = today.plusDays(1).atStartOfDay(Schedule.ZONE);
 
         if (sch.hasData) {
             boolean warn = st.flag(Store.F_BEFORE);

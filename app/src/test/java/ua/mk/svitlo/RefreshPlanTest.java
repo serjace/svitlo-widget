@@ -51,4 +51,52 @@ public class RefreshPlanTest {
         assertEquals(rollback + 30 * 60_000L + 5_000L,
                 RefreshPlan.nextAt(rollback, start, start + 30 * 60_000L, 30, 5));
     }
+
+    @Test public void everyIntervalStopsAtKyivMidnightRegardlessOfJitter() {
+        long late = local("2026-10-28T23:59:30");
+        long midnight = local("2026-10-29T00:00:00");
+        for (int minutes : new int[]{5, 10, 15, 30}) {
+            for (int jitter : new int[]{-60, 0, 60}) {
+                assertEquals(midnight, RefreshPlan.after(late, minutes, jitter));
+            }
+        }
+        assertEquals(local("2026-10-28T23:54:00"),
+                RefreshPlan.after(local("2026-10-28T23:50:00"), 5, -60));
+    }
+
+    @Test public void savedDeadlineFromPreviousVersionIsCappedAndRemainsDueAfterRestart() {
+        long last = local("2026-10-28T23:55:00");
+        long saved = local("2026-10-29T00:25:00");
+        long midnight = local("2026-10-29T00:00:00");
+        for (String time : new String[]{"2026-10-28T23:59:00", "2026-10-29T00:00:00",
+                "2026-10-29T00:08:00", "2026-10-30T09:00:00"}) {
+            assertEquals(midnight, RefreshPlan.nextAt(local(time), last, saved, 30, 60));
+        }
+    }
+
+    @Test public void midnightAttemptStartsANewCycleAndConcurrentTriggerIsNotDue() {
+        long midnight = local("2026-10-29T00:00:00");
+        long next = RefreshPlan.after(midnight, 30, 42);
+        assertEquals(midnight + 30 * 60_000L + 42_000L, next);
+        assertEquals(next, RefreshPlan.nextAt(midnight + 1_000, midnight, next, 30, -60));
+        assertTrue(next > midnight + 1_000);
+        // A failed attempt also reserves this deadline; there is no retry loop at midnight.
+        long delayed = local("2026-10-29T00:08:00");
+        assertEquals(delayed + 30 * 60_000L - 20_000L, RefreshPlan.after(delayed, 30, -20));
+    }
+
+    @Test public void midnightUsesCalendarDatesAcrossDstAndYearBoundaries() {
+        for (String day : new String[]{"2026-03-29", "2026-10-25", "2026-12-31"}) {
+            java.time.LocalDate date = java.time.LocalDate.parse(day);
+            long attempt = date.atTime(23, 59).atZone(Schedule.ZONE).toInstant().toEpochMilli();
+            long midnight = date.plusDays(1).atStartOfDay(Schedule.ZONE).toInstant().toEpochMilli();
+            assertEquals(midnight, RefreshPlan.after(attempt, 30, 60));
+            assertEquals(midnight, RefreshPlan.nextDayAt(date.atStartOfDay(Schedule.ZONE)
+                    .toInstant().toEpochMilli()));
+        }
+    }
+
+    private static long local(String dateTime) {
+        return java.time.LocalDateTime.parse(dateTime).atZone(Schedule.ZONE).toInstant().toEpochMilli();
+    }
 }
