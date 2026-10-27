@@ -99,6 +99,13 @@ final class Schedule {
                 }
             }
             s.hasData = true;
+            // The website always creates today even when /active has no record for it,
+            // then treats missing queue slots as ENABLE. Match that rule only after a
+            // successful fetch today; yesterday's empty cache must not invent a new day.
+            if (slotOf.size() == 48 && st.fetchedAt() > 0) {
+                s.includeDefaultToday(Instant.ofEpochMilli(st.fetchedAt()).atZone(ZONE).toLocalDate(),
+                        LocalDate.now(ZONE));
+            }
         } catch (Exception e) {
             s.days.clear();
             s.enabled.clear();
@@ -106,6 +113,12 @@ final class Schedule {
         }
         for (Address x : st.addresses()) s.works.put(x.domId, Works.parse(st.works(x.domId)));
         return s;
+    }
+
+    void includeDefaultToday(LocalDate checkedDay, LocalDate today) {
+        if (hasData && today.equals(checkedDay) && !days.containsKey(today)) {
+            days.put(today, new HashMap<>());
+        }
     }
 
     /** Emergencies and planned works of this house (www.energy.mk.ua); empty when none. */
